@@ -24,245 +24,80 @@ window.accountSchemas['OPML'] = {
 
 
 
-// Base URL is the URL of the OPML file
-// accessToken is the URL of the OPML2JSON servcie
+// Shared audio state — used by both the OPML adapter and the RSS reader
 
-const summaryLimit = 500;
 const audioFiles = [];
-let opmlFile;
-let opmlServer;
-let cursor;
 
-
-// Handler
+// ---- OPML handler ----
+// Display is delegated to the RSS reader pipeline; feedFunctions mirror RSS.
 
 (function () {
-    const opmlHandler = {
+    window.readerHandlers = window.readerHandlers || {};
+    window.readerHandlers['OPML'] = {
         name: 'OPML',
         display: 'OPML',
         icon: 'rss_feed',
-        description: 'Harvests links from an OPML file and displays them.',
+        description: 'Reads feeds listed in an OPML file via the RSS reader.',
         type: 'feed',
-        initialize: () => {
-        },
+        initialize: () => {},
         feedFunctions: {
-            'Timeline': fetchAndDisplayOPMLData.bind(null, '')
-            // Add more named functions as needed
+            'Unread':     () => { rssActiveFeedFilter = null; rssFilter = 'unread';     rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },
+            'All':        () => { rssActiveFeedFilter = null; rssFilter = 'all';        rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },
+            'Bookmarked': () => { rssActiveFeedFilter = null; rssFilter = 'bookmarked'; rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },
+            'Refresh':    () => rssRefresh().catch(e => { console.error(e); showStatusMessage('Refresh failed: ' + e.message); }),
         },
-        statusActions: (item,opmlID,itemLink) => {
-            let opmlstatusActions = ``;
-
-            // Enlarge Content
-            if (item.content) { opmlstatusActions += `<button class="material-icons md-18 md-light" onClick="toggleFormDisplay('${opmlID}-content');toggleFormDisplay('${opmlID}-summary');">zoom_out_map</button>`; }
-//alert("Audio3?"+item.audioIcon);
-
-            // Play audio
-            if (item.audioIcon && item.audioIcon != '') { opmlstatusActions +=  `${item.audioIcon}`; }
-
-            // Open link in a new window
-            if (item.link && /^https?:\/\//i.test(item.link)) {
-                const safeLink = item.link.replace(/'/g, '%27');
-                opmlstatusActions += `<button class="material-icons md-18 md-light" onClick="window.open('${safeLink}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>`;
-            }
-
-            return opmlstatusActions;
-        }
+        onFeedClick:   (item) => rssFilterByFeed(item.feedUrl),
+        onAuthorClick: null,
+        statusActions: null,
     };
-    // Ensure readerHandlers exists
-    if (typeof window.readerHandlers === 'undefined') {
-    window.readerHandlers = {}; // Create it if it doesn't exist
-    }
+})();
 
-    // Add the handler
-    window.readerHandlers['OPML'] = opmlHandler;
- })();
+// ---- OPML initializer — thin adapter over the RSS reader ----
 
-// -----------------------------------------------------
-    
-
-// Mastodon Feed Functions
-// Ensure feedFunctions exists
-window.feedFunctions = window.feedFunctions || {};
-
-// Define  OPML Functions
-window.OPMLFunctions = {
-    'Timeline': fetchAndDisplayOPMLData.bind(null, '')
-};
-
-// Add  OPMLFunctions to feedFunctions
-window.feedFunctions['OPML'] = window.OPMLFunctions;
-
-// -----------------------------------------------------
-
-// Function to initialize the Mastodon client with a specific account
-async function initializeOPML(baseURL, accessToken, nextCursor) {
-    if (!baseURL) {
-        console.error('Error: OPML file URL is missing');
+async function initializeOPML(opmlUrl) {
+    if (!opmlUrl) {
+        showServiceError('feed-container', 'OPML error', 'No OPML URL provided.');
         return;
     }
-    // opmlServer is always the shared opml2json service; accessToken is not used here
-
+    const fc = document.getElementById('feed-container');
+    if (fc) {
+        fc.innerHTML = '';
+        const msg = document.createElement('p');
+        msg.className = 'feed-status-message';
+        msg.id = 'rss-fetch-status';
+        msg.textContent = 'Reading OPML file…';
+        fc.appendChild(msg);
+    }
     try {
-        console.log('Attempting to initialize OPML client for', baseURL);
-
-        opmlServer = (typeof getOpml2jsonUrl === 'function')
+        const serviceUrl = (typeof getOpml2jsonUrl === 'function')
             ? await getOpml2jsonUrl()
             : 'https://opml2json.downes.ca';
-        opmlFile = baseURL;
-        cursor = nextCursor;
 
-        await fetchAndDisplayOPMLData();
-        const accountStatusDiv = document.getElementById('account-status');
-        accountStatusDiv.innerHTML = `<p>Successfully switched to the account on ${baseURL}</p>`;
-        accountStatusDiv.innerHTML += `<p>Fetching data from ${accessToken}</p>`;
-
-        
-
-    } catch (error) {
-        const accountStatusDiv = document.getElementById('account-status');
-        accountStatusDiv.innerHTML = `<p>Error initializing OPML client: ${error.message}</p>`;
-        console.error('Error initializing OPML client:', error);
-    }
-
-}
-
-// Base URL is the URL of the OPML file
-// accessToken is the URL of the OPML2JSON service
-
-async function fetchAndDisplayOPMLData(cursor) {
-
-    let OPMLitems = [];
-    let OPMLtitle = null;
-
-    const feedContainer = document.getElementById('feed-container');
-
-    if (!opmlServer || !opmlFile) {
-        if (feedContainer) feedContainer.innerHTML = `<p class="feed-status-message">No OPML account selected. Please select an account first.</p>`;
-        return;
-    }
-
-    // Show elapsed-time loading indicator
-    let elapsed = 0;
-    if (feedContainer) feedContainer.innerHTML = `<p class="feed-status-message">Loading OPML feed… <span id="opml-timer">0</span>s</p>`;
-    const timerInterval = setInterval(() => {
-        elapsed++;
-        const timerEl = document.getElementById('opml-timer');
-        if (timerEl) timerEl.textContent = elapsed;
-    }, 1000);
-
-    try {
-        // Construct the request payload
         const formData = new FormData();
-        formData.append('url', opmlFile);
-        if (cursor) {
-            formData.append('cursor', cursor);
+        formData.append('url', opmlUrl);
+        const resp = await fetch(`${serviceUrl}/list_feeds`, { method: 'POST', body: formData });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (!data.ok) throw new Error(data.error || 'list_feeds failed');
+        const feedCount = (data.feeds || []).length;
+        if (fc) {
+            const el = document.getElementById('rss-fetch-status');
+            if (el) el.textContent = `Found ${feedCount} feed${feedCount !== 1 ? 's' : ''} — fetching…`;
         }
 
-        // Send the POST request to the server
-        const requestURL =  opmlServer+"/upload_opml";
-
-        const response = await fetch(requestURL, {
-            method: 'POST',
-            body: formData
+        await initializeRSS({
+            type:     'OPML',
+            instance: opmlUrl,
+            title:    data.title || opmlUrl,
+            feeds:    data.feeds || [],
         });
-
-        // Check if the response is OK
-        if (!response.ok) {
-            let serverMsg = '';
-            try { const errData = await response.json(); serverMsg = errData.error || ''; } catch(e) {}
-            throw new Error(serverMsg || `HTTP error! status: ${response.status}`);
-        }
-
-        // Parse the JSON response
-        const data = await response.json();
-
-        // Validate the response structure
-        if (!data.items || !Array.isArray(data.items)) {
-            throw new Error('Invalid response format: Missing or invalid "items" array.');
-        }
-
-        
-        // Process items and update the cursor
-        OPMLtitle = data.title;
-        OPMLitems = data.items;
-        nextCursor = data.next_cursor || null;
-        // console.log(OPMLitems);
-        // Display the items
-        if (OPMLitems.length === 0) {
-            clearInterval(timerInterval);
-            if (feedContainer) feedContainer.innerHTML = `<p class="feed-status-message">No items to display.</p>`;
-            return;
-        }
-    } catch (error) {
-        clearInterval(timerInterval);
-        const accountStatusDiv = document.getElementById('account-status');
-        if (accountStatusDiv) accountStatusDiv.innerHTML = `<p>Error fetching OPML: ${error.message}</p>`;
-        console.error('Error initializing OPML client:', error);
-        return;
+    } catch (err) {
+        console.error('OPML: failed to initialize:', err);
+        showServiceError('feed-container', 'OPML error', err.message);
     }
-
-    clearInterval(timerInterval);
-    feedContainer.innerHTML = '';
-    feedContainer.appendChild(createFeedHeader(OPMLtitle || 'OPML Feed'));
-
-    // Display the Harvested Posts
-    //for (const item of OPMLitems) {
-    let audioCount=0;
-    OPMLitems.forEach(item => {
-
-
-        // Create the listing object - align to main listing item fields
-        // makeListing(service,url,title,desc,feed,author,date,full_content) 
-        item.service = 'OPML';
-        item.url = item.link || item.guid;
-        item.desc = item.summary;
-        item.feed = item.source;
-        item.content = item.full_content;
-        item.feed = item.source;
-        item.date = item.published;
-
-
-
-        // Extract audio files
-        let audioIcon = '';
-        if (Array.isArray(item.audio)) {
-            // If item.audio is an array, push all the audio URLs as objects into audioFiles
-            item.audio.forEach(audioURL => {
-                console.log("Found audio file:", audioURL);
-                audioFiles.push({ src: audioURL, title: item.title });
-                audioCount++;
-            });
-        } else if (item.audio) {
-            // If item.audio is just a single URL, push it as an object
-            console.log("Found audio file:", item.audio);
-            audioFiles.push({ src: item.audio, title: item.title });
-            audioCount++;
-        } else {
-            console.log("No audio found for this item.");
-        }
-        
-        // If we have one or more audio files, set the audioIcon
-        if (audioFiles.length > 0) {
-            // currentAudio is set to the last added audio file's index
-            currentAudio = audioCount - 1;
-            audioIcon = `<button class="material-icons md-18 md-light" onClick="playAudio(${currentAudio});">play_arrow</button>`;
-        //    alert("Audio?"+audioIcon);
-        } else {
-            audioIcon = ``;
-        }
-        item.audioIcon = audioIcon;
-
-        const listing = makeListing(item);
-        feedContainer.appendChild(listing);
-    });
-
-    // Fill the audio list
-    const audioList = document.getElementById('audio-list');
-    if (audioList) audioList.innerHTML += generatePlaylistHTML();
-
 }
 
-// Handle the Audio Functions
+// ---- Audio player ----
 // Expects to find audio files in a list audioFiles = []
 
 const player = document.getElementById('myAudioPlayer');

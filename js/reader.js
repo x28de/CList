@@ -98,9 +98,14 @@ function accountIcon(type) {
         span.setAttribute('aria-label', 'Mastodon');
         return span;
     }
+    if (type === 'OPML') {
+        const span = document.createElement('span');
+        span.className = 'account-icon-img account-icon-img--opml';
+        span.setAttribute('aria-label', 'OPML');
+        return span;
+    }
     const materialIcons = {
         'Bluesky':   'cloud',
-        'OPML':      'rss_feed',
         'RSS':       'rss_feed',
         'WordPress': 'article',
         'Blogger':   'article',
@@ -386,8 +391,8 @@ function makeListing(
 
     // Create item ID
     // (One day we want this to be a content-based ID)
+    if (!itemUrl) throw new Error('makeListing: item.url is required to generate an element ID');
     const itemID = createUniqueIdFromUrl(itemUrl);
-    if (!itemID) { console.error('Could not make itemID'); }
 
     // Prepare the summary: truncate if too long; promote plain-text desc to content if longer.
     if (itemDesc && itemDesc.length > summaryLimit) {
@@ -397,48 +402,68 @@ function makeListing(
         itemDesc = truncateContent(itemDesc);
     }
 
-    summary = `
-        <div id='${itemID}-summary' style='display:block;'>
-        <a href="#" onclick="${item.feedAction || `loadMastodonFeed('user',null,'${_heJs(itemAuthor || 'Unknown Author')}'); return false;`}" title='View User Thread'>${_he(itemFeed) || 'Unknown Source'}</a>:
-        ${_he(itemDesc) || 'No Summary'}
-        </div>`;
+    // Build summary div with DOM methods — handlers registered per-service, no inline JS strings
+    const summaryDiv = document.createElement('div');
+    summaryDiv.id = `${itemID}-summary`;
+    summaryDiv.style.display = 'block';
 
+    const feedHandler = readerHandlers[service]?.onFeedClick;
+    const feedEl = document.createElement(feedHandler ? 'a' : 'span');
+    if (feedHandler) {
+        feedEl.href = '#';
+        feedEl.title = 'Show only items from this feed';
+        feedEl.onclick = (e) => { e.preventDefault(); feedHandler(item); };
+    }
+    feedEl.textContent = itemFeed || 'Unknown Source';
+    summaryDiv.appendChild(feedEl);
+
+    const authorHandler = readerHandlers[service]?.onAuthorClick;
+    if (itemAuthor && authorHandler) {
+        summaryDiv.appendChild(document.createTextNode(' · '));
+        const authorEl = document.createElement('a');
+        authorEl.href = '#';
+        authorEl.title = 'Show items by this author';
+        authorEl.onclick = (e) => { e.preventDefault(); authorHandler(item); };
+        authorEl.textContent = itemAuthor;
+        summaryDiv.appendChild(authorEl);
+    }
+    summaryDiv.appendChild(document.createTextNode(': ' + (itemDesc || 'No Summary')));
+
+    // Build content div (if applicable)
+    let contentDiv = null;
     if (safeContentHtml && safeContentHtml.length > (itemDesc || '').length) {
-            content = `
-            <div id='${itemID}-content' style='display:none;'>
-                <div class='status-actions'>
-                <button class="material-icons md-18 md-light" onClick="toggleFormDisplay('${itemID}-content');toggleFormDisplay('${itemID}-summary');">zoom_in_map</button>
-                </div>
-                <div class='post'>
-                    <h2 class='post-title'>${_he(itemTitle)}</h2>
-                    <p><em>${_he(itemAuthor || 'Unknown Author')}, ${_he(itemFeed || 'Unknown Source')}, ${_he(itemDate || 'Date unknown')}</em></p>
-                    <div class='post-full-content'>${safeContentHtml}</div>
-                </div>
+        contentDiv = document.createElement('div');
+        contentDiv.id = `${itemID}-content`;
+        contentDiv.style.display = 'none';
+        contentDiv.innerHTML = `
+            <div class='status-actions'>
+            <button class="material-icons md-18 md-light" onclick="toggleFormDisplay('${itemID}-content');toggleFormDisplay('${itemID}-summary');">zoom_in_map</button>
+            </div>
+            <div class='post'>
+                <h2 class='post-title'>${_he(itemTitle)}</h2>
+                <p><em>${_he(itemAuthor || 'Unknown Author')}, ${_he(itemFeed || 'Unknown Source')}, ${_he(itemDate || 'Date unknown')}</em></p>
+                <div class='post-full-content'>${safeContentHtml}</div>
             </div>`;
-        } else {
-            content = ``;
-        }
+    }
 
-  
     // Create the Status Box div
     const statusBox = document.createElement('div');
-    statusBox.classList.add('status-box'); // Add a class for styling
-  
+    statusBox.classList.add('status-box');
+
     // Create the Status Content div
     const statusContent = document.createElement('div');
-    statusContent.classList.add('status-content'); // Add a class for styling
-  
+    statusContent.classList.add('status-content');
+
     // Create the Status Specific div
     const statusSpecific = document.createElement('div');
-    statusSpecific.classList.add('statusSpecific'); // Add a class for styling
-    statusSpecific.id = itemID; // Specific identity for this status
-  
-    // Populate StatusSpecific inner HTML
-    statusSpecific.innerHTML = `
-      ${item.titleHtml || `<a onclick="${service}Search('${_heJs(itemTitle || '')}');">${_he(itemTitle)}</a>`}<br>
-      ${summary}
-      ${content}
-    `;
+    statusSpecific.classList.add('statusSpecific');
+    statusSpecific.id = itemID;
+
+    // Assemble statusSpecific: title, then DOM-built summary, then content
+    const titleHtmlStr = item.titleHtml || `<a onclick="${service}Search('${_heJs(itemTitle || '')}');">${_he(itemTitle)}</a>`;
+    statusSpecific.innerHTML = `${titleHtmlStr}<br>`;
+    statusSpecific.appendChild(summaryDiv);
+    if (contentDiv) statusSpecific.appendChild(contentDiv);
 
     // Images & media
     const images = item.images;
@@ -488,15 +513,22 @@ function makeListing(
     clistActions.innerHTML = `
       <button class="material-icons md-18 md-light" onclick="loadContentToEditor('${itemID}');" title="Load in editor">arrow_right</button>
       <button class="clist-action-btn" onclick="shareToChat('${itemID}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
+      <button class="clist-action-btn" id="anno-btn-${itemID}" onclick="showAnnotations('${itemID}');" title="Show annotations"><span class="material-icons md-18 md-light">rate_review</span></button>
     `;
-  
+
+    // Annotations panel — full-width row inside the flex status-box
+    const annotationPanel = document.createElement('div');
+    annotationPanel.className = 'annotations-panel';
+    annotationPanel.id = 'annotations-' + itemID;
+
     // Assemble
     statusContent.appendChild(statusSpecific);
     statusContent.appendChild(statusActions);
-  
+
     statusBox.appendChild(statusContent);
     statusBox.appendChild(clistActions);
-  
+    statusBox.appendChild(annotationPanel);
+
     return statusBox;
   }
   

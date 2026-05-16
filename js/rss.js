@@ -50,6 +50,8 @@ window.accountSchemas['RSS'] = {
             'Bookmarked': () => { rssActiveFeedFilter = null; rssFilter = 'bookmarked'; rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },
             'Refresh':    () => rssRefresh().catch(e => { console.error(e); showStatusMessage('Refresh failed: ' + e.message); }),
         },
+        onFeedClick:   (item) => rssFilterByFeed(item.feedUrl),
+        onAuthorClick: null,
         statusActions: (item, itemID) => {
             let a = '';
             if (item.full_content) {
@@ -57,6 +59,7 @@ window.accountSchemas['RSS'] = {
                    + `onclick="toggleFormDisplay('${itemID}-content');`
                    + `toggleFormDisplay('${itemID}-summary');">zoom_out_map</button>`;
             }
+            if (item.audioIcon) { a += item.audioIcon; }
             if (item.link && /^https?:\/\//i.test(item.link)) {
                 const safeLink = item.link.replace(/'/g, '%27');
                 a += `<button class="material-icons md-18 md-light" `
@@ -95,11 +98,8 @@ const RSS_OPML2JSON_DEFAULT = 'https://opml2json.downes.ca';
 const RSS_RETENTION = 30 * 86400; // seconds
 
 // Return the opml2json service URL to use for this session:
-// - desktop (localhost/127.0.0.1): assume localrss is running on :8787
-// - otherwise: check accounts for an OPML2JSON entry, fall back to built-in default
+// Check accounts for an OPML2JSON entry, fall back to built-in default.
 async function getOpml2jsonUrl() {
-    const h = window.location.hostname;
-    if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8787';
     try {
         const accts = (Array.isArray(window.accounts) && window.accounts.length)
             ? window.accounts
@@ -328,6 +328,7 @@ async function _rssFetchFeed(feedUrl, collectionKey, serviceUrl) {
                 author:  it.author || '',
                 published:   pub,
                 contentHtml: it.full_content || it.summary || '',
+                audio:   it.audio || null,
                 readAt: null, bookmarked: 0,
                 createdAt: now,
             });
@@ -464,6 +465,11 @@ async function rssDisplayEntries() {
         _rssSortedEntries = entries;
         _rssDisplayOffset = 0;
 
+        // Clear audio state from any previous collection
+        audioFiles.length = 0;
+        const audioList = document.getElementById('audio-list');
+        if (audioList) audioList.innerHTML = '';
+
         fc.innerHTML = '';
         fc.appendChild(createFeedHeader(rssCurrentAccount.title || 'RSS'));
 
@@ -508,6 +514,13 @@ function _rssAppendPage() {
 
     const page = _rssSortedEntries.slice(_rssDisplayOffset, _rssDisplayOffset + RSS_PAGE_SIZE);
     for (const e of page) {
+        let audioIcon = '';
+        if (e.audio && e.audio.length) {
+            const audioUrls = Array.isArray(e.audio) ? e.audio : [e.audio];
+            audioUrls.forEach(src => audioFiles.push({ src, title: e.title }));
+            const idx = audioFiles.length - 1;
+            audioIcon = `<button class="material-icons md-18 md-light" onclick="playAudio(${idx});">play_arrow</button>`;
+        }
         fc.appendChild(makeListing({
             service:    'RSS',
             url:        e.link,
@@ -515,7 +528,7 @@ function _rssAppendPage() {
             desc:       _rssPlainText(e.contentHtml),
             feed:       _rssTitleMap[e.feedUrl]  || e.feedUrl,
             titleHtml:  `<strong>${e.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>`,
-            feedAction: `rssFilterByFeed(decodeURIComponent('${encodeURIComponent(e.feedUrl)}')); return false;`,
+            feedUrl:    e.feedUrl,
             author:     e.author || _rssAuthorMap[e.feedUrl] || '',
             date:       new Date(e.published * 1000).toLocaleDateString(),
             full_content: _rssSanitizeHtml(e.contentHtml),
@@ -523,9 +536,13 @@ function _rssAppendPage() {
             entryId:    e.entryId,
             readAt:     e.readAt,
             bookmarked: e.bookmarked,
+            audioIcon,
         }));
     }
     _rssDisplayOffset += page.length;
+
+    const audioList = document.getElementById('audio-list');
+    if (audioList) audioList.innerHTML = generatePlaylistHTML();
 
     const remaining = _rssSortedEntries.length - _rssDisplayOffset;
     if (remaining > 0) {

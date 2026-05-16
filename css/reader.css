@@ -45,12 +45,57 @@
         .status-box {
             margin-left: 10px;
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             border: 1px solid #ddd;
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 5px;
             background-color: #f9f9f9;
+        }
+
+        /* Annotations panel — spans full width below status-content and clist-actions */
+        .annotations-panel {
+            display: none;
+            flex: 0 0 100%;
+            border-top: 1px solid #e8e8e8;
+            padding-top: 8px;
+            margin-top: 6px;
+        }
+
+        .annotation-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85rem;
+        }
+
+        .annotation-item:last-child {
+            border-bottom: none;
+        }
+
+        .annotation-creator {
+            font-weight: 500;
+            color: #555;
+            margin-right: 8px;
+        }
+
+        .annotation-date {
+            color: #aaa;
+            font-size: 0.78rem;
+        }
+
+        .annotation-body {
+            margin: 3px 0 2px;
+            color: #333;
+        }
+
+        .annotation-tags {
+            color: #999;
+            font-size: 0.75rem;
+        }
+
+        .clist-actions button.action-active {
+            color: rgb(220, 130, 20);
         }
 
         /* Style for the status content */

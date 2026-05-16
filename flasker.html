@@ -253,7 +253,6 @@
         function typePickerIcon(type) {
             const icons = {
                 Bluesky:   'cloud',
-                OPML:      'rss_feed',
                 RSS:       'rss_feed',
                 WordPress: 'article',
                 Blogger:   'article',
@@ -261,11 +260,18 @@
                 Collab:    'groups',
                 AI:        'psychology',
                 Proxyp:    'vpn_key',
+                Annotate:  'rate_review',
             };
             if (type === 'Mastodon') {
                 const span = document.createElement('span');
                 span.className = 'account-icon-img';
                 span.setAttribute('aria-label', 'Mastodon');
+                return span;
+            }
+            if (type === 'OPML') {
+                const span = document.createElement('span');
+                span.className = 'account-icon-img account-icon-img--opml';
+                span.setAttribute('aria-label', 'OPML');
                 return span;
             }
             const span = document.createElement('span');
@@ -290,7 +296,7 @@
 
             const list = document.createElement('div');
             list.className = 'account-list';
-            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp'].forEach(type => {
+            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp', 'Annotate'].forEach(type => {
                 const btn = document.createElement('button');
                 btn.className = 'account-button';
                 btn.onclick = () => selectAccountType(type);
@@ -1000,11 +1006,18 @@
                 span.setAttribute('aria-label', 'Mastodon');
                 return span;
             }
+            if (type === 'OPML') {
+                const span = document.createElement('span');
+                span.className = 'account-icon-img account-icon-img--opml';
+                span.setAttribute('aria-label', 'OPML');
+                return span;
+            }
             const materialIcons = {
                 'Bluesky':   'cloud',
-                'OPML':      'rss_feed',
+                'RSS':       'rss_feed',
                 'WordPress': 'article',
                 'Blogger':   'article',
+                'Annotate':  'rate_review',
             };
             const span = document.createElement('span');
             span.className = 'material-icons';

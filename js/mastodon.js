@@ -45,6 +45,8 @@ window.accountSchemas['Mastodon'] = {
                 initialize: async (baseURL, accessToken) => {
                     await initializeMasto(baseURL, accessToken);
                 },
+                onFeedClick:   null,
+                onAuthorClick: (item) => loadMastodonFeed('user', null, item.author),
                 feedFunctions: {
                     'Post':          () => openLeftInterface(mastodonStatusForm()),
                     'Following':     loadMastodonFeed.bind(null, 'home', null),

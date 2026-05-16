@@ -149,7 +149,7 @@ function truncateToGraphemeLimit(text, limit = 300) {
 }
 
 // Summarize content by truncating
-// const summaryLimit = 100; // Example limit, adjust as needed, place where needed
+const summaryLimit = 500;
 
 function truncateContent(content) {
     // If content is within the limit, return immediately

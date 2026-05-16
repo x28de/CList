@@ -687,7 +687,13 @@
     color: white;
   }
 
+  .account-icon-img--opml {
+    -webkit-mask: url('../assets/icons/opml-mask.svg') no-repeat center / contain;
+    mask: url('../assets/icons/opml-mask.svg') no-repeat center / contain;
+  }
+
   .account-button.selected .account-icon-img,
+  .account-button.selected .account-icon-img--opml,
   .account-button.selected .service-icon-img {
     background-color: white;
   }

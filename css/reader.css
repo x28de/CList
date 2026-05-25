@@ -425,8 +425,171 @@
             button {
                 font-size: 16px;            /* Slightly larger text */
             }
-        
+
         }
+
+/* ── Annotation read button (orange icon + count, injected into status-actions) ─ */
+
+.status-actions .anno-read-btn {
+    background: none;
+    color: #e67300;
+    border: none;
+    padding: 2px 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    border-radius: 3px;
+}
+
+.status-actions .anno-read-btn .material-icons {
+    font-size: 1rem;
+    color: #e67300;
+}
+
+.status-actions .anno-read-btn:hover {
+    background: #fff5e6;
+}
+
+/* ── DID profile link in annotation entries ─────────────────────────────────── */
+
+.did-profile-link {
+    color: #777;
+    vertical-align: middle;
+    margin: 0 4px;
+    text-decoration: none;
+}
+
+.did-profile-link .material-icons {
+    font-size: 1rem;
+    vertical-align: middle;
+}
+
+.did-profile-link:hover {
+    color: #e67300;
+}
+
+/* ── Annotation thread overlay ────────────────────────────────────────────────── */
+
+.annotation-thread-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: 100%;
+    background: #fff;
+    z-index: 100;
+    padding: 0 0 2em;
+    box-sizing: border-box;
+}
+
+.annotation-thread-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.5em 0.8em;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #444;
+    position: sticky;
+    top: 0;
+    z-index: 101;
+}
+
+.annotation-thread-close {
+    background: none;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    padding: 1px 6px;
+    cursor: pointer;
+    color: #555;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+.annotation-thread-close:hover {
+    background: #e0e0e0;
+}
+
+.annotation-meta {
+    margin-bottom: 4px;
+}
+
+.annotation-feed-author-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #f0f4ff;
+    border-left: 3px solid #2068ba;
+    font-size: 0.82rem;
+    color: #444;
+    margin-bottom: 6px;
+}
+
+/* ── Dark mode ─────────────────────────────────────────────────────────────── */
+html.dark-mode select,
+html.dark-mode input[type="text"],
+html.dark-mode input[type="password"],
+html.dark-mode textarea {
+    background-color: #2d2d2d; border-color: #3a3a3a; color: #e0e0e0;
+}
+html.dark-mode .status-box { background-color: #252525; border-color: #3a3a3a; }
+html.dark-mode .annotations-panel { border-top-color: #3a3a3a; }
+html.dark-mode .annotation-item { border-bottom-color: #2f2f2f; }
+html.dark-mode .annotation-creator { color: #ccc; }
+html.dark-mode .annotation-date    { color: #777; }
+html.dark-mode .annotation-body    { color: #e0e0e0; }
+html.dark-mode .annotation-tags    { color: #777; }
+html.dark-mode .reblog-info { border-bottom-color: #3a3a3a; }
+html.dark-mode .status-actions button,
+html.dark-mode .clist-actions button {
+    background-color: #2d2d2d; color: #7eb8f7;
+}
+html.dark-mode .status-actions button:hover,
+html.dark-mode .clist-actions button:hover { background-color: #333; }
+html.dark-mode .feed-status-message { border-color: #3a3a3a; color: #999; }
+html.dark-mode .error-message {
+    border-color: #7a3030; color: #ff8080; background-color: #2d1515;
+}
+html.dark-mode .feed-header { border-color: #3a3a3a; background-color: #252525; }
+html.dark-mode .feed-header h2 { color: #e0e0e0; }
+html.dark-mode .feed-header p  { color: #999; }
+html.dark-mode #feed-menu { border-bottom-color: #3a3a3a; }
+html.dark-mode #accounts-header,
+html.dark-mode #audio-header,
+html.dark-mode #chat-header,
+html.dark-mode #read-header,
+html.dark-mode #find-header,
+html.dark-mode #save-header,
+html.dark-mode #post-header { background-color: #2a2a2a; border-color: #3a3a3a; }
+html.dark-mode #audio-left-close-button,
+html.dark-mode #chat-left-close-button { color: #ccc; }
+html.dark-mode #chat-messages { border-color: #3a3a3a; }
+html.dark-mode #chat-messages .chat-event { color: #777; }
+html.dark-mode #audio-list p { background-color: #252525; border-color: #3a3a3a; }
+html.dark-mode #audio-list p.audio-playing { background-color: #2a3a2a; border-color: #3a5a3a; }
+html.dark-mode .post { border-top-color: #3a3a3a; }
+html.dark-mode .status-actions .anno-read-btn,
+html.dark-mode .status-actions .anno-read-btn .material-icons { color: #e67300; }
+html.dark-mode .status-actions .anno-read-btn:hover { background: #2d1e00; }
+html.dark-mode .did-profile-link { color: #777; }
+html.dark-mode .did-profile-link:hover { color: #e67300; }
+html.dark-mode .annotation-thread-overlay { background: #1e1e1e; }
+html.dark-mode .annotation-thread-header {
+    background: #252525; border-bottom-color: #3a3a3a; color: #ccc;
+}
+html.dark-mode .annotation-thread-close { border-color: #555; color: #999; }
+html.dark-mode .annotation-thread-close:hover { background: #333; }
+html.dark-mode .annotation-feed-author-banner {
+    background: #1a2035; border-left-color: #3060a0; color: #ccc;
+}
 
 
 

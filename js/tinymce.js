@@ -221,13 +221,15 @@ function displayReferences(editorDiv) {
 
 // tinymce-config.js
 
+const _dm = document.documentElement.classList.contains('dark-mode');
+
 tinymceConfig = {
     selector: '#write-column',
     height: 500,
     menubar: false,
     plugins: 'link image code',
     toolbar: 'bold italic link image code',
-    skin: 'oxide',
+    skin: _dm ? 'oxide-dark' : 'oxide',
     setup: function (editor) {
         editor.on('click', function () {
             console.log('Editor was clicked');
@@ -248,31 +250,21 @@ tinymceConfig = {
             offerDraftRestore('tinymce', 'text/html');
         }
     },
-    content_style: `
-        body {
-            background: #fff;
-            font-size: 14px;
-        }
-
-
-
-
+    content_style: _dm ? `
+        body { background: #1e1e1e; color: #e0e0e0; font-size: 14px; }
         @media (min-width: 840px) {
-            html {
-                background: #eceef4;
-                min-height: 100%;
-                padding: 0 .5rem;
-            }
-
-            body {
-                background-color: #ddd;
-                box-shadow: 0 0 4px rgba(0, 0, 0, .15);
-                box-sizing: border-box;
-                margin: 1rem auto 0;
-                max-width: 820px;
-                min-height: calc(100vh - 1rem);
-                
-            }
+            html { background: #111; min-height: 100%; padding: 0 .5rem; }
+            body { background-color: #252525; box-shadow: 0 0 4px rgba(0,0,0,.5);
+                   box-sizing: border-box; margin: 1rem auto 0;
+                   max-width: 820px; min-height: calc(100vh - 1rem); }
+        }
+    ` : `
+        body { background: #fff; font-size: 14px; }
+        @media (min-width: 840px) {
+            html { background: #eceef4; min-height: 100%; padding: 0 .5rem; }
+            body { background-color: #ddd; box-shadow: 0 0 4px rgba(0,0,0,.15);
+                   box-sizing: border-box; margin: 1rem auto 0;
+                   max-width: 820px; min-height: calc(100vh - 1rem); }
         }
     `,
 

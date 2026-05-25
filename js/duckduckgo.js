@@ -115,9 +115,7 @@ async function duckduckgoSearch(q) {
         feedContainer.appendChild(listing);
 
     }
-    
-
- 
+    window.checkAnnotationsBatch?.();
 }
 
 // Helper function to extract title and description from text

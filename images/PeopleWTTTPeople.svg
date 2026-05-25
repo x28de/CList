@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 280" role="img" aria-labelledby="title desc">
+  <title id="title">People want to talk to People</title>
+  <desc id="desc">Large "People" at each end of a rectangle, with "want to" and "talk to" stacked between them.</desc>
+
+  <!-- Outer rectangle -->
+  <rect x="2" y="2" width="1596" height="276" fill="white" stroke="#4caf50" stroke-width="4" rx="4"/>
+
+  <!-- People at each end -->
+  <text x="20" y="195" font-size="180" font-weight="700" fill="#4caf50" font-family="Arial, Helvetica, sans-serif">People</text>
+  <text x="1580" y="195" font-size="180" font-weight="700" fill="#4caf50" font-family="Arial, Helvetica, sans-serif" text-anchor="end">People</text>
+
+  <!-- Stacked phrases — vertically centred to match People's cap-top and baseline -->
+  <text x="800" y="114" font-size="68" font-weight="700" fill="#4caf50" font-family="Arial, Helvetica, sans-serif" text-anchor="middle">want to</text>
+  <text x="800" y="196" font-size="68" font-weight="700" fill="#4caf50" font-family="Arial, Helvetica, sans-serif" text-anchor="middle">talk to</text>
+</svg>

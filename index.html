@@ -10,6 +10,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CList</title>
+  <script>if (localStorage.getItem('clist-dark-mode') === '1') document.documentElement.classList.add('dark-mode');</script>
   <link rel="stylesheet" href="css/interface.css">
   <link rel="stylesheet" href="css/reader.css">
   <link rel="icon" type="image/x-icon" href="assets/icons/CList.ico">
@@ -67,7 +68,10 @@
                     <div id="feed-menu"></div><!-- This div will display the feed menu -->
                     <div id="feed-container">
                         <div style="padding:8% 10%">
-                            <h3>Welcome to CList</h3>
+                            <div style="margin-bottom:0.6em;">
+                                <img src="images/PTTP.png" style="width:80%; max-width:400px; display:block;">
+                                <h3 style="margin:0.4em 0 0;">Welcome to CList</h3>
+                            </div>
                             <p style="margin:0.6em 0;">Your personal learning environment for reading feeds, writing content, and publishing to social platforms.</p>
                             <p style="margin:1em 0 0.4em;">
                                 <a href="#" onclick="startInterfaceTour(); return false;">Take a quick tour</a>

@@ -1,0 +1,135 @@
+/* sidebar.css — shared styles for all left-sidebar iframe pages
+   Load after kvlist.css so overrides take effect.                */
+
+/* interface.css sets html,body { display:flex; justify-content:center } which
+   centers body inside html and shrinks it to content width. Override both so
+   the full viewport width is available to sidebar content. */
+html, body {
+    display: block;
+    width: 100%;
+    text-align: left;
+}
+
+/* Left-align the container (kvlist.css defaults to margin: 0 auto) */
+.kvcontainer {
+    margin: 0;
+}
+
+/* Consistent sizing for the main container, section blocks, and lists */
+.kvcontainer,
+.me-section,
+#following-list {
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+}
+
+/* Status / loading text */
+.me-status {
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0.4rem 0;
+}
+
+
+/* ── Back navigation ──────────────────────────────────────────── */
+
+.back-btn {
+    background: none;
+    border: none;
+    color: var(--highlight-color);
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0.5rem 0 0.2rem;
+    display: block;
+}
+
+.back-btn:hover {
+    text-decoration: underline;
+}
+
+
+/* ── me.html navigation buttons ──────────────────────────────── */
+
+.nav-item {
+    margin-bottom: 0.8rem;
+}
+
+.nav-btn {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.82rem;
+    background: var(--highlight-color);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-bottom: 0.2rem;
+}
+
+.nav-btn:hover {
+    filter: brightness(0.88);
+}
+
+.nav-desc {
+    font-size: 0.78rem;
+    color: #666;
+    margin: 0;
+}
+
+
+/* ── following.html ───────────────────────────────────────────── */
+
+.following-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+}
+
+.following-item:last-child {
+    border-bottom: none;
+}
+
+.following-name {
+    flex: 1;
+}
+
+.following-name a {
+    color: #2068ba;
+    text-decoration: none;
+}
+
+.following-name a:hover {
+    text-decoration: underline;
+}
+
+.unfollow-btn {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    color: #888;
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.unfollow-btn:hover {
+    border-color: #c44;
+    color: #c44;
+    background: #fff5f5;
+}
+
+
+/* ── Dark mode ─────────────────────────────────────────────────────────────── */
+html.dark-mode .me-status { color: #999; }
+html.dark-mode .nav-desc  { color: #999; }
+html.dark-mode .following-item { border-bottom-color: #2f2f2f; }
+html.dark-mode .following-name a { color: #7eb8f7; }
+html.dark-mode .unfollow-btn { border-color: #555; color: #777; }
+html.dark-mode .unfollow-btn:hover {
+    border-color: #c44; color: #c44; background: #2d1515;
+}

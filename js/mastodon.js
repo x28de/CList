@@ -442,8 +442,7 @@ function displayMastodonFeed(data,type,page,nextPageUrl,feedContainer,typevalue)
                                                          // Next Button
 
     renderMastodonNextPageButton(feedContainer, nextPageUrl, url => loadMastodonFeed(type, url));
-
-
+    window.checkAnnotationsBatch?.();
 }
 
 
@@ -684,13 +683,18 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
         const clistButtons = document.createElement('div');
         clistButtons.classList.add('clist-actions');
         clistButtons.innerHTML = `
-            <button class="material-icons md-18 md-light" onclick="loadContentToEditor('${status.id}')" title="Load in editor">arrow_right</button>
+            <button class="clist-action-btn" id="anno-btn-${status.id}" onclick="clistAnnotate('${status.id}');" title="Annotate / add to references"><span class="material-icons md-18 md-light">rate_review</span></button>
             <button class="clist-action-btn" onclick="shareToChat('${status.id}')" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
         `;
+
+        const annotationPanel = document.createElement('div');
+        annotationPanel.className = 'annotations-panel';
+        annotationPanel.id = 'annotations-' + status.id;
 
         // Append content and actions to the status box
         statusBox.appendChild(statusContent);
         statusBox.appendChild(clistButtons);
+        statusBox.appendChild(annotationPanel);
 
 
         // Shorten the displayed text for links

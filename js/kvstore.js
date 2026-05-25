@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loginRequired("No login cookie found.");
     } else if (isTokenExpired(_token)) {
         loginRequired("Token expired.");
-    } else if (!sessionStorage.getItem(flaskSiteUrl + '_encKey')) {
+    } else if (!sessionStorage.getItem(`${flaskSiteUrl}_${getSiteSpecificCookie(flaskSiteUrl, 'username')}_encKey`)) {
         loginRequired("Session key cleared. Please log in again.");
     } else {
         loginNotRequired();
@@ -223,6 +223,55 @@ function kvstoreMePanel() {
     `;
     return div;
 }
+
+function playFollowing() {
+    history.pushState({ panel: 'me' }, '');
+    openLeftInterface(kvstoreFollowingPanel());
+}
+
+// Returns the Following panel element (list of followed DIDs)
+function kvstoreFollowingPanel() {
+    const div = document.createElement('div');
+    div.innerHTML = `
+        <iframe src="following.html" style="width:100%; height:600px; border:none;"></iframe>
+    `;
+    return div;
+}
+
+function playDid() {
+    history.pushState({ panel: 'me' }, '');
+    openLeftInterface(kvstoreDidPanel());
+}
+
+// Returns the Identity panel element (DID management and public identity settings)
+function kvstoreDidPanel() {
+    const div = document.createElement('div');
+    div.innerHTML = `
+        <iframe src="did.html" style="width:100%; height:600px; border:none;"></iframe>
+    `;
+    return div;
+}
+
+function playOptions() {
+    history.pushState({ panel: 'me' }, '');
+    openLeftInterface(kvstoreOptionsPanel());
+}
+
+// Returns the Options panel element
+function kvstoreOptionsPanel() {
+    const div = document.createElement('div');
+    div.innerHTML = `
+        <iframe src="options.html" style="width:100%; height:600px; border:none;"></iframe>
+    `;
+    return div;
+}
+
+// Browser back button returns to the Me nav page when inside a sub-panel
+window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.panel === 'me') {
+        playMe();
+    }
+});
 
         // Function to toggle the account selection section
         function toggleAccountSection(open) {
@@ -368,6 +417,7 @@ function kvstoreMePanel() {
                 acceptLogin();
                 accounts = await getAccounts(flaskSiteUrl);
                 if (mode === 'register') autoRegisterCollab().catch(e => console.warn('Collab auto-registration failed:', e));
+                if (mode === 'register') autoRegisterAnnotations().catch(e => console.warn('Annotations auto-registration failed:', e));
                 autoSeedRSSRelay().catch(e => console.warn('RSS Relay account seed failed:', e));
                 if (accounts) {
                     updateUIVisibility();
@@ -405,10 +455,12 @@ function kvstoreMePanel() {
         function KVlogout(flaskSiteUrl) {
 
             // Remove the token cookies and session encryption key
+            const _logoutUser = getSiteSpecificCookie(flaskSiteUrl, 'username');
             deleteSiteSpecificCookie(flaskSiteUrl,'access_token');
             deleteSiteSpecificCookie(flaskSiteUrl,'username');
             deleteSiteSpecificCookie(flaskSiteUrl,'token_expires');
-            sessionStorage.removeItem(flaskSiteUrl + '_encKey');
+            if (_logoutUser) sessionStorage.removeItem(`${flaskSiteUrl}_${_logoutUser}_encKey`);
+            sessionStorage.removeItem(flaskSiteUrl + '_encKey'); // clean up any legacy key
 
 
             // Clear the account list
@@ -659,6 +711,46 @@ function kvstoreMePanel() {
             if (!saveResp.ok) throw new Error('Collab account save failed: ' + saveResp.status);
         }
 
+        // Silently register the current user on the matching annotations server and save
+        // an Annotate account to kvstore if one doesn't already exist.
+        async function autoRegisterAnnotations() {
+            const kvMatch = (flaskSiteUrl || '').match(/^https?:\/\/kvstore\.(.+)/);
+            if (!kvMatch) return;
+            const annoUrl = `https://annotations.${kvMatch[1]}`;
+            const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+            if (!token) return;
+
+            const resp = await fetch(`${annoUrl}/api/register`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            if (!resp.ok) throw new Error(`Annotations registration failed (${resp.status})`);
+
+            // Don't add a duplicate account entry
+            const existing = (accounts || []).find(a => {
+                const v = parseAccountValue(a);
+                return v && v.type === 'Annotate' && v.instance === annoUrl;
+            });
+            if (existing) return;
+
+            const encKey = await getEncKey(flaskSiteUrl);
+            if (!encKey) throw new Error('Encryption key not available');
+            const instanceData = { type: 'Annotate', instance: annoUrl, title: annoUrl.replace('https://', ''), permissions: 'rw' };
+            const encryptedValue = await encryptWithKey(encKey, JSON.stringify(instanceData));
+
+            const saveResp = await fetch(`${flaskSiteUrl}/add_kv/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ key: annoUrl, value: encryptedValue })
+            });
+            if (!saveResp.ok) throw new Error('Annotations account save failed: ' + saveResp.status);
+
+            // Refresh accounts and update UI so the Post button appears immediately
+            accounts = await getAccounts(flaskSiteUrl);
+            updateUIVisibility();
+            if (typeof populatePostOptions === 'function') populatePostOptions(accounts);
+        }
+
         // Silently save a default RSS Relay (OPML2JSON) service account if one doesn't exist.
         async function autoSeedRSSRelay() {
             const OPML2JSON_DEFAULT = 'https://opml2json.downes.ca';
@@ -720,7 +812,9 @@ function kvstoreMePanel() {
  * @returns {Promise<CryptoKey|null>}
  */
 async function getEncKey(siteUrl) {
-    const b64 = sessionStorage.getItem(siteUrl + '_encKey');
+    const username = getSiteSpecificCookie(siteUrl, 'username');
+    if (!username) return null;
+    const b64 = sessionStorage.getItem(`${siteUrl}_${username}_encKey`);
     if (!b64) return null;
     const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     return window.crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
@@ -762,7 +856,7 @@ async function KVloginWithCredentials(uname, password) {
     // Export encKey to raw bytes and store in sessionStorage (cleared when tab closes)
     const rawKey = await window.crypto.subtle.exportKey('raw', encKey);
     const keyB64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
-    sessionStorage.setItem(flaskSiteUrl + '_encKey', keyB64);
+    sessionStorage.setItem(`${flaskSiteUrl}_${data.username}_encKey`, keyB64);
 
     return { token: data.token, username: data.username };
 }

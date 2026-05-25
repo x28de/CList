@@ -505,10 +505,16 @@ async function displayBlueskyPosts(posts, title, cursor = null, atUri) {
         const clistButtons = document.createElement('div');
         clistButtons.classList.add('clist-actions');
         clistButtons.innerHTML = `
-            <button class="material-icons md-18 md-light" onclick="loadContentToEditor('${postId}');" title="Load in editor">arrow_right</button>
+            <button class="clist-action-btn" id="anno-btn-${postId}" onclick="clistAnnotate('${postId}');" title="Annotate / add to references"><span class="material-icons md-18 md-light">rate_review</span></button>
             <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
         `;
+
+        const annotationPanel = document.createElement('div');
+        annotationPanel.className = 'annotations-panel';
+        annotationPanel.id = 'annotations-' + postId;
+
         statusBox.appendChild(clistButtons);
+        statusBox.appendChild(annotationPanel);
 
         timelineElement.appendChild(statusBox);
     }
@@ -527,6 +533,7 @@ async function displayBlueskyPosts(posts, title, cursor = null, atUri) {
         };
         timelineElement.appendChild(loadMoreButton);
     }
+    window.checkAnnotationsBatch?.();
 }
 
 // Toggle like or repost on a Bluesky post.
@@ -798,8 +805,15 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
             clistButtons.innerHTML = `
                 <button class="material-icons md-18 md-light" onclick="loadContentToEditor('${postId}');" title="Load in editor">arrow_right</button>
                 <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
+                <button class="clist-action-btn" id="anno-btn-${postId}" onclick="openAnnotationEditor('${postId}');" title="Add annotation"><span class="material-icons md-18 md-light">rate_review</span></button>
             `;
+
+            const annotationPanel = document.createElement('div');
+            annotationPanel.className = 'annotations-panel';
+            annotationPanel.id = 'annotations-' + postId;
+
             statusBox.appendChild(clistButtons);
+            statusBox.appendChild(annotationPanel);
         }
 
         feedContainer.appendChild(statusBox);

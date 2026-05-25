@@ -435,6 +435,54 @@
                 return;
             }
 
+            if (type === 'Annotate') {
+                const flow = document.getElementById('add-flow');
+                const inputStyle = 'display:block;width:100%;box-sizing:border-box;padding:0.2rem;font-size:0.8rem;margin:2px 0 8px;';
+                const labelStyle = 'font-variant:small-caps;font-size:0.8rem;color:#555;display:block;margin-top:6px;';
+                const knownServers = ['https://annotations.mooc.ca', 'https://annotations.downes.ca'];
+                const optionsList = knownServers.map(s => `<option value="${s}">${s}</option>`).join('') +
+                                    '<option value="__custom__">Custom…</option>';
+                flow.innerHTML = `
+                    <h3 style="margin:0 0 8px;">Add Annotation Server</h3>
+                    <div id="anno-status" style="font-size:0.8rem;color:#555;margin-bottom:6px;min-height:1.2em;"></div>
+                    <label style="${labelStyle}">Server</label>
+                    <select id="anno-server-select" onchange="annoServerChanged()" style="${inputStyle}">${optionsList}</select>
+                    <input type="url" id="anno-custom-url" placeholder="https://annotations.example.com"
+                           style="display:none;width:100%;box-sizing:border-box;padding:0.2rem;font-size:0.8rem;margin:2px 0 8px;">
+                    <label style="${labelStyle}">Title</label>
+                    <input type="text" id="anno-title" placeholder="My Annotations" style="${inputStyle}">
+                    <label style="${labelStyle}">Permissions</label>
+                    <input type="text" id="anno-perms" value="rw" style="${inputStyle}">
+                    <div class="kv-action-buttons">
+                        <button class="kv-action-btn kv-save-btn" onclick="connectAnnotate()">Add Account</button>
+                        <button class="kv-action-btn kv-cancel-btn" onclick="showTypePicker()">Back</button>
+                    </div>`;
+
+                // Auto-detect from flaskSiteUrl: kvstore.mooc.ca → annotations.mooc.ca
+                const kvMatch = (flaskSiteUrl || '').match(/^https?:\/\/kvstore\.(.+)/);
+                if (kvMatch) {
+                    const autoUrl = `https://annotations.${kvMatch[1]}`;
+                    const sel = document.getElementById('anno-server-select');
+                    if ([...sel.options].some(o => o.value === autoUrl)) {
+                        sel.value = autoUrl;
+                    } else {
+                        const opt = new Option(autoUrl, autoUrl);
+                        sel.insertBefore(opt, sel.firstChild);
+                        sel.value = autoUrl;
+                    }
+                    const statusEl = document.getElementById('anno-status');
+                    statusEl.textContent = `Checking ${autoUrl}…`;
+                    fetch(autoUrl + '/health').then(r => {
+                        if (!statusEl.isConnected) return;
+                        if (r.ok) { statusEl.style.color = '#2a7a2a'; statusEl.textContent = `✓ Found annotation server at ${autoUrl}`; }
+                        else      { statusEl.style.color = '#888';    statusEl.textContent = `No annotation server at ${autoUrl} — pick one below.`; }
+                    }).catch(() => {
+                        if (statusEl.isConnected) { statusEl.style.color = '#888'; statusEl.textContent = 'Could not reach auto-detected server — pick one below.'; }
+                    });
+                }
+                return;
+            }
+
             const schema = window.parent.accountSchemas && window.parent.accountSchemas[type];
             if (!schema) { window.parent.showStatusMessage('No schema for account type: ' + type); return; }
 
@@ -510,6 +558,65 @@
                 setTimeout(() => { cancelAdd(); getSite(flaskSiteUrl); }, 1200);
             } catch (e) {
                 console.error('Collab registration error:', e);
+                statusEl.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        function annoServerChanged() {
+            const sel = document.getElementById('anno-server-select');
+            const customInput = document.getElementById('anno-custom-url');
+            customInput.style.display = sel.value === '__custom__' ? 'block' : 'none';
+        }
+
+        async function connectAnnotate() {
+            const statusEl = document.getElementById('anno-status');
+            const sel = document.getElementById('anno-server-select');
+            let url = sel.value === '__custom__'
+                ? (document.getElementById('anno-custom-url').value || '').trim()
+                : sel.value;
+            if (!url) { statusEl.textContent = 'Please select or enter a server URL.'; return; }
+            url = url.replace(/\/$/, '');
+            const title = (document.getElementById('anno-title').value || '').trim();
+            if (!title) { statusEl.textContent = 'Please enter a title.'; return; }
+            const permissions = (document.getElementById('anno-perms').value || 'rw').trim();
+            const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+            if (!token) { statusEl.textContent = 'Please log in before adding an account.'; return; }
+
+            statusEl.style.color = '#555';
+            statusEl.textContent = `Checking ${url}…`;
+            try {
+                const healthResp = await fetch(url + '/health');
+                if (!healthResp.ok) throw new Error('Server not reachable (HTTP ' + healthResp.status + ')');
+
+                statusEl.textContent = `Registering on ${url}…`;
+                const regResp = await fetch(`${url}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                if (!regResp.ok) {
+                    const regErr = await regResp.json().catch(() => ({}));
+                    throw new Error('Registration failed: ' + (regErr.detail || regResp.status));
+                }
+
+                const instanceData = { type: 'Annotate', instance: url, title, permissions };
+                const encKey = await window.parent.getEncKey(flaskSiteUrl);
+                if (!encKey) throw new Error('Encryption key not found — please log in again.');
+                const encryptedValue = await encryptWithKey(encKey, JSON.stringify(instanceData));
+                const matchingAccount = accounts.find(a => a.key === url);
+                const endpoint = matchingAccount ? 'update_kv/' : 'add_kv/';
+                const saveResp = await fetch(`${flaskSiteUrl}/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ key: url, value: encryptedValue })
+                });
+                if (!saveResp.ok) throw new Error('Account save failed: ' + saveResp.status);
+                accounts = await window.parent.getAccounts(flaskSiteUrl);
+                statusEl.style.color = '#2a7a2a';
+                statusEl.textContent = `✓ Registered and account added for ${url.replace('https://', '')}`;
+                setTimeout(() => { cancelAdd(); getSite(flaskSiteUrl); }, 1200);
+            } catch (e) {
+                console.error('Annotate registration error:', e);
+                statusEl.style.color = '#c00';
                 statusEl.textContent = 'Error: ' + e.message;
             }
         }
@@ -1047,7 +1154,7 @@
                 tip.textContent = 'Select an account to manage';
                 accountList.appendChild(tip);
 
-                const kvItems = data.filter(k => !k.key.startsWith('_'));
+                const kvItems = data.filter(k => !k.key.startsWith('_') && !k.key.startsWith('social:following:'));
                 let decryptFailCount = 0;
                 for (const kv of kvItems) {
                     let parsedValue = null;
@@ -1080,6 +1187,7 @@
                     errBanner.textContent = 'Could not decrypt accounts — session key missing. Please log out and log back in.';
                     kvList.appendChild(errBanner);
                 }
+
             } catch (error) {
                 console.error('Error fetching account list:', error);
                 const kvList = document.getElementById('kvList');
@@ -1087,7 +1195,6 @@
             }
         }
 
-        
         async function deleteKeyValue() {
             const keyEl = document.getElementById('_keyInput');
             const key = keyEl ? keyEl.value : '';
@@ -1391,9 +1498,11 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script>if (localStorage.getItem('clist-dark-mode') === '1') document.documentElement.classList.add('dark-mode');</script>
     <link rel="stylesheet" href="css/interface.css">
     <link rel="stylesheet" href="css/reader.css">
     <link rel="stylesheet" href="css/kvlist.css">
+    <link rel="stylesheet" href="css/sidebar.css">
 
         <style>
             body {
@@ -1401,10 +1510,8 @@
                 font-family: Arial, sans-serif;
                 line-height: 1.6;
                 box-sizing: border-box;
-                display: block; /* override interface.css flex centering */
             }
 
-            /* Edit card */
             #sharedForm {
                 border: 1px solid #ddd;
                 border-radius: 4px;
@@ -1413,10 +1520,8 @@
                 background: #fafafa;
             }
 
-            /* Form */
             #addKvForm { width: 100%; }
 
-            /* Labels */
             #addKvForm label {
                 margin-bottom: 0;
                 display: block;
@@ -1427,7 +1532,6 @@
                 color: #555;
             }
 
-            /* Form inputs */
             #addKvForm input,
             #add-account-header button {
                 display: block;

@@ -292,13 +292,15 @@ This loads the item's text into the TinyMCE editor in the write pane, wiring it 
 
 ## The `.reference` object
 
-Attached directly to the `div#[item-id]` DOM element. Used by the editor and publish flow to identify/use the item without re-fetching:
+Attached directly to the `div#[item-id]` DOM element. Used by the editor, publish flow, and annotation system to identify the item without re-fetching:
 
 ```js
 statusSpecific.reference = {
     author_name,   // display name
     author_id,     // handle / acct
-    url,           // canonical post URL
+    url,           // canonical post URL (the <link> element, not the guid)
+    guid,          // alternate URL form (e.g. WordPress ?p=NNN short URL, or RSS guid)
+                   // equals url if no alternate form exists
     title,         // service name or post title
     feed,          // feed/source name (RSS) or acct (Mastodon)
     created_at,    // ISO timestamp
@@ -306,8 +308,78 @@ statusSpecific.reference = {
 }
 ```
 
-## Known inconsistencies (as of 2026-04-27)
+Both `url` and `guid` are needed because some feeds (e.g. WordPress) publish two URL forms for the same post: a pretty permalink (`url`) and a short `?p=NNN` form (`guid`). Annotations may be stored against either form, so both are required for lookup.
 
-All previously identified inconsistencies have been resolved. The remaining structural gap is that Mastodon and Bluesky still build their feed items directly via DOM/innerHTML rather than going through `makeListing()`. This is a larger refactor deferred for a future session.
+---
 
-**When adding a new service:** follow the `makeListing()` + `readerHandlers` pattern. The `div.clist-actions` with `arrow_right` calling `loadContentToEditor(itemID)` and the `.reference` object on `div#[item-id]` are mandatory — they wire each item into the write/publish flow. See the `makeListing()` field contract above for escaping rules and the `SafeHtml` requirement for `full_content`.
+## Annotation system integration
+
+`annotate.js` provides a batch annotation check that runs after every feed render. **Every feed renderer must call it.** Failure to do so means annotation indicators will never appear for that feed type.
+
+### How it works
+
+1. `window.checkAnnotationsBatch()` scans all `.statusSpecific` elements in `#feed-container` that have a `.reference` object with a valid URL.
+2. It collects both `reference.url` and `reference.guid` (when they differ) and sends them all in a single `POST /annotations/batch-check` request to each configured annotation store.
+3. For any URL that has annotations, it injects an orange `.anno-read-btn` button into the item's `div.status-actions`.
+4. Clicking the button opens `showAnnotationThread(itemId)`, which fetches full annotation content for both URL forms and displays it as an overlay.
+
+### The inner `.status-actions` pitfall
+
+Items that have full content use an expand/collapse pattern. The collapsed summary is one div; the expanded content is a separate sibling div with its own `div.status-actions` (containing only the collapse/zoom_in_map button) inside it:
+
+```
+div.statusSpecific (id="item-...")
+  ├── div#[item-id]-summary   — always visible
+  └── div#[item-id]-content   — hidden by default (display:none)
+        └── div.status-actions  ← INNER: only zoom_in_map; hidden with the content div
+```
+
+The outer `div.status-actions` (the one with launch, mail, bookmark etc.) is a sibling of `div.statusSpecific` inside `div.status-content`, not a descendant:
+
+```
+div.status-content
+  ├── div.statusSpecific
+  └── div.status-actions  ← OUTER: always visible; annotation button goes here
+```
+
+`checkAnnotationsBatch` uses `:scope > .status-actions` to select only the **direct child** of `status-content`, avoiding the hidden inner one:
+
+```js
+const statusActions = liveEl.parentElement?.querySelector(':scope > .status-actions');
+```
+
+Any code that searches for `.status-actions` inside or relative to a `statusSpecific` element must use the same `:scope >` form, or it will find the wrong element.
+
+### Calling convention
+
+At the end of every feed render function — after all items have been appended to `#feed-container` — add:
+
+```js
+window.checkAnnotationsBatch?.();
+```
+
+The `?.()` guards against the case where `annotate.js` is not loaded (e.g. in a stripped-down build). Call it **once per render**, not per item. Do not call it from a MutationObserver — the observer approach causes double-runs because button injection itself triggers another observation cycle.
+
+### Current call sites (as of 2026-05-23)
+
+| File | Function | Notes |
+|------|----------|-------|
+| `rss.js` | `_rssAppendPage()` | Called on initial render and each "Load more" page |
+| `mastodon.js` | `displayMastodonFeed()` | Called on initial render and each "Load next page" |
+| `bluesky.js` | `displayBlueskyPosts()` | Called on initial render and each "Load more" |
+| `googlesearch.js` | `googleSearch()` | Called after results are appended |
+| `duckduckgo.js` | `duckduckgoSearch()` | Called after results are appended |
+| `oasis.js` | `oasisSearch()` (or equivalent) | Called after results are appended |
+
+---
+
+## Known inconsistencies (as of 2026-05-23)
+
+The remaining structural gap is that Mastodon and Bluesky still build their feed items directly via DOM/innerHTML rather than going through `makeListing()`. This is a larger refactor deferred for a future session.
+
+**When adding a new service**, all of the following are mandatory:
+
+1. **`div.clist-actions`** with `arrow_right` calling `loadContentToEditor(itemID)` — wires item into the write/publish flow.
+2. **`.reference` object** on `div#[item-id]` — populate all fields including `url` and `guid`. If the service has no alternate URL form, set `guid` equal to `url`.
+3. **`window.checkAnnotationsBatch?.()` call** at the end of the render function — enables annotation indicators for the new feed type.
+4. Follow the `makeListing()` + `readerHandlers` pattern. See the `makeListing()` field contract above for escaping rules and the `SafeHtml` requirement for `full_content`.

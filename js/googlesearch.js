@@ -160,10 +160,10 @@ async function googleSearch(query,type,start) {
 
             // Push Next Page button to the Bottom
             feedContainer.appendChild(nextPageButton);
-
+            window.checkAnnotationsBatch?.();
         }
 
-      
+
         // console.log("Google Search results:", data);
         
         

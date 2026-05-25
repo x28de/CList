@@ -97,8 +97,7 @@ async function oasisSearch(query,start) {
         showServiceError(feedContainer, 'Oasis Search error', error.message,
             'Could not reach Oasis Search. Check your network connection or try again later.');
     }
-
-
+    window.checkAnnotationsBatch?.();
     console.log(data);
 }
 

@@ -156,6 +156,24 @@ Moving from `kvstore.mooc.ca` to `kvstore.downes.ca`:
 
 ---
 
+## Data ownership and annotation visibility policy
+
+A core principle of the CList identity system is that **a person owns their own data** — including their social graph. This shapes how annotation visibility works:
+
+- A user knows who they follow (stored encrypted in their own kvstore, readable only to them).
+- A user does **not** know who follows them. Follow relationships are private to the follower.
+
+As a consequence, the annotation server supports only two visibility levels:
+
+| Visibility | Meaning |
+|------------|---------|
+| `public` | Visible to anyone, no authentication required |
+| `private` | Visible only to the creator (not returned by any public endpoint) |
+
+There is no `followers` visibility tier. Implementing it correctly would require the annotation server to query the follower's private social graph — which violates the data ownership principle (the follow list belongs to the follower, not to the annotation server or the person being followed). Any server-side enforcement of "followers-only" would require centralising that relationship in a way the design deliberately avoids.
+
+---
+
 ## did:dht upgrade path
 
 did:dht identifiers are Ed25519-based. Since the identity key is already Ed25519, enabling

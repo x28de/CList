@@ -126,21 +126,23 @@ let _rssDb = null;
 function _rssOpenDb() {
     if (_rssDb) return Promise.resolve(_rssDb);
     return new Promise((resolve, reject) => {
-        const req = indexedDB.open(_RSS_DB_NAME, 1);
+        const req = indexedDB.open(_RSS_DB_NAME, 2);
         req.onupgradeneeded = ev => {
             const db = ev.target.result;
-            if (!db.objectStoreNames.contains('feeds')) {
-                const fs = db.createObjectStore('feeds', { keyPath: 'url' });
-                fs.createIndex('collectionKey', 'collectionKey');
-            }
-            if (!db.objectStoreNames.contains('entries')) {
-                const es = db.createObjectStore('entries', { keyPath: 'entryId' });
-                es.createIndex('collectionKey', 'collectionKey');
-                es.createIndex('feedUrl',       'feedUrl');
-            }
+            if (db.objectStoreNames.contains('entries')) db.deleteObjectStore('entries');
+            if (db.objectStoreNames.contains('feeds'))   db.deleteObjectStore('feeds');
+            const fs = db.createObjectStore('feeds', { keyPath: 'url' });
+            fs.createIndex('collectionKey', 'collectionKey');
+            const es = db.createObjectStore('entries', { keyPath: 'entryId' });
+            es.createIndex('collectionKey', 'collectionKey');
+            es.createIndex('feedUrl',       'feedUrl');
         };
         req.onsuccess = ev => { _rssDb = ev.target.result; resolve(_rssDb); };
         req.onerror   = ()  => reject(req.error);
+        req.onblocked = ()  => {
+            console.warn('RSS DB upgrade blocked — close other CList tabs and reload.');
+            showStatusMessage('RSS: please close other CList tabs and reload to finish the database upgrade.');
+        };
     });
 }
 
@@ -207,8 +209,8 @@ function _rssScore(publishedTs, monthCount, now) {
 
 // ---- Stable entry ID (djb2-style hash, sync) ----
 
-function _rssEntryId(feedUrl, guid) {
-    const s = feedUrl + '\x00' + (guid || '');
+function _rssEntryId(feedUrl, guid, collectionKey) {
+    const s = (collectionKey || '') + '\x00' + feedUrl + '\x00' + (guid || '');
     let h = 5381;
     for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0;
     return 'e' + h.toString(36) + s.length.toString(36);
@@ -291,6 +293,9 @@ function _rssSanitizeHtml(html) {
     return new SafeHtml(doc.body.innerHTML);
 }
 
+// Export sanitizer for use by other modules (e.g. annotate.js)
+window.sanitizeHtml = _rssSanitizeHtml;
+
 // ---- Fetch one feed via opml2json /fetch_feed ----
 
 async function _rssFetchFeed(feedUrl, collectionKey, serviceUrl) {
@@ -319,12 +324,12 @@ async function _rssFetchFeed(feedUrl, collectionKey, serviceUrl) {
         for (const it of (data.items || [])) {
             const pub = it.published_ts || now;
             if (pub < cutoff) continue;
-            const eid = _rssEntryId(feedUrl, it.guid || it.link || it.title || '');
+            const eid = _rssEntryId(feedUrl, it.guid || it.link || it.title || '', collectionKey);
             const wasAdded = await _rssAdd('entries', {
                 entryId: eid, feedUrl, collectionKey,
                 guid:    it.guid  || it.link  || '',
                 title:   it.title || '(no title)',
-                link:    it.guid  || it.link  || '',
+                link:    it.link  || it.guid  || '',
                 author:  it.author || '',
                 published:   pub,
                 contentHtml: it.full_content || it.summary || '',
@@ -533,6 +538,7 @@ function _rssAppendPage() {
             date:       new Date(e.published * 1000).toLocaleDateString(),
             full_content: _rssSanitizeHtml(e.contentHtml),
             link:       e.link,
+            guid:       e.guid,
             entryId:    e.entryId,
             readAt:     e.readAt,
             bookmarked: e.bookmarked,
@@ -554,6 +560,7 @@ function _rssAppendPage() {
         btn.onclick = _rssAppendPage;
         fc.appendChild(btn);
     }
+    window.checkAnnotationsBatch?.();
 }
 
 async function rssToggleRead(entryId, btn) {

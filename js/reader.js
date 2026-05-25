@@ -169,6 +169,7 @@ async function initializeReader(readerType, baseURL, accessToken) {
         await readerHandlers[readerType].initialize(baseURL, accessToken);
     } else {
         console.error(`reader type '${readerType}' is not supported or does not have an initialize method.`);
+        showStatusMessage(`"${readerType}" is not a supported reader type — check your account settings.`);
     }
 
 }
@@ -191,7 +192,7 @@ async function playRead() {
         }
         populateReadAccountList(accounts);
     } catch (error) {
-        showStatusMessage('Error in playRead: ' + error.message);
+        showStatusMessage('Could not load accounts — try logging out and back in. ' + error.message);
     }
 }
 
@@ -238,7 +239,12 @@ function findPanel() {
         if (typeof handler.search !== 'function') return;
         const btn = document.createElement('button');
         btn.className = 'account-button';
-        btn.addEventListener('click', () => handler.search());
+        btn.addEventListener('click', () => {
+            Promise.resolve(handler.search()).catch(e => {
+                showStatusMessage('Search failed: ' + e.message);
+                console.error('Search error:', e);
+            });
+        });
 
         let iconEl;
         if (handler.logoSrc) {
@@ -272,11 +278,15 @@ function populateReadAccountList(accounts) {
     accountList.appendChild(makeAccountList(
         'Select an account to read',
         accounts,
-        v => v.permissions.includes('r'),
+        v => v.permissions.includes('r') && v.type !== 'Annotate',
         key => switchReaderAccount(key)
     ));
     // Kick off background RSS fetches so feeds are ready before the user clicks
-    if (typeof rssBackgroundFetchAll === 'function') rssBackgroundFetchAll(accounts);
+    if (typeof rssBackgroundFetchAll === 'function') {
+        rssBackgroundFetchAll(accounts).catch(e => {
+            console.error('Background RSS fetch failed:', e);
+        });
+    }
 }
 
 
@@ -302,7 +312,9 @@ async function switchReaderAccount(key) {
             case 'OPML': await initializeOPML(instance, accessToken); break;
             case 'RSS':  await initializeRSS(accountData); break;
             // Additional cases can be easily added here
-            default: console.log("Unsupported instance type:", instanceType);
+            default:
+                console.error('Unsupported instance type:', instanceType);
+                showStatusMessage(`"${instanceType}" accounts are not supported as a reader — check your account type.`);
         }
     } catch (err) {
         console.error('Error loading feed:', err);
@@ -364,8 +376,6 @@ function makeListing(
         };
     }
 
-   // alert("Audio2?"+item.audioIcon);
-  
     // Extract parameters from item
     // So we can use them more clearly below
 
@@ -375,6 +385,7 @@ function makeListing(
         title: itemTitle = null,
         desc: itemDesc = "",
         feed: itemFeed = null,
+        feedUrl: itemFeedUrl = null,
         author: itemAuthor = null,
         date: itemDate = null,
         full_content: itemFull_content = ""
@@ -493,9 +504,10 @@ function makeListing(
       author_name: itemAuthor || '(unknown author)',
       author_id: '(unknown author ID)',
       url: itemUrl || '(no URL provided)',
-      guid: itemUrl || '(no GUID provided)',
+      guid: item.guid || itemUrl || '',
       title: itemTitle || '(no title)',
       feed: itemFeed || '(no feed specified)',
+      feedUrl: itemFeedUrl || null,
       created_at: itemDate || new Date().toISOString(),
       id: itemID || '(no ID)'
     };
@@ -504,16 +516,18 @@ function makeListing(
     const statusActions = document.createElement('div');
     statusActions.classList.add('status-actions'); // Add a class for styling
   
-    // This assumes you still have the same logic for 'readerHandlers'
-    statusActions.innerHTML = readerHandlers[service].statusActions(item,itemID, itemUrl);
+    const _statusActionsHtml = readerHandlers[service]?.statusActions?.(item, itemID, itemUrl);
+    if (_statusActionsHtml == null) {
+        console.error('makeListing: no statusActions handler for service', service);
+    }
+    statusActions.innerHTML = _statusActionsHtml || '';
   
     // Create CList Actions
     const clistActions = document.createElement('div');
     clistActions.classList.add('clist-actions'); // Add a class for styling
     clistActions.innerHTML = `
-      <button class="material-icons md-18 md-light" onclick="loadContentToEditor('${itemID}');" title="Load in editor">arrow_right</button>
+      <button class="clist-action-btn" id="anno-btn-${itemID}" onclick="clistAnnotate('${itemID}');" title="Annotate / add to references"><span class="material-icons md-18 md-light">rate_review</span></button>
       <button class="clist-action-btn" onclick="shareToChat('${itemID}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
-      <button class="clist-action-btn" id="anno-btn-${itemID}" onclick="showAnnotations('${itemID}');" title="Show annotations"><span class="material-icons md-18 md-light">rate_review</span></button>
     `;
 
     // Annotations panel — full-width row inside the flex status-box

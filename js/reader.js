@@ -3,7 +3,7 @@
 //
 //  Version version 0.1 created by Stephen Downes on January 27, 2025
 //
-//  Copyright National Research Council of Canada 2025
+//  Copyright Stephen Downes 2025, downes.ca
 //  Licensed under Creative Commons Attribution 4.0 International https://creativecommons.org/licenses/by/4.0/
 //
 //  This software carries NO WARRANTY OF ANY KIND.
@@ -278,14 +278,12 @@ function populateReadAccountList(accounts) {
     accountList.appendChild(makeAccountList(
         'Select an account to read',
         accounts,
-        v => v.permissions.includes('r') && v.type !== 'Annotate',
+        v => v.permissions.includes('r') && v.type !== 'Annotate' && v.type !== 'Hypothesis',
         key => switchReaderAccount(key)
     ));
     // Kick off background RSS fetches so feeds are ready before the user clicks
     if (typeof rssBackgroundFetchAll === 'function') {
-        rssBackgroundFetchAll(accounts).catch(e => {
-            console.error('Background RSS fetch failed:', e);
-        });
+        rssBackgroundFetchAll(accounts);
     }
 }
 

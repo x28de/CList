@@ -128,7 +128,7 @@
             return;
         }
 
-        const PUBLIC_TYPES = new Set(['Mastodon', 'Bluesky', 'WordPress', 'Blogger', 'Annotate']);
+        const PUBLIC_TYPES = new Set(['Mastodon', 'Bluesky', 'WordPress', 'Blogger', 'Annotate', 'Hypothesis']);
 
         const rows = [];
         for (const kv of kvs.filter(k => !k.key.startsWith('_'))) {
@@ -202,7 +202,8 @@
             OPML:      'FeedList',
             AI:        'AIService',
             Proxyp:    'ProxyService',
-            Annotate:  'AnnotationService',
+            Annotate:   'AnnotationService',
+            Hypothesis: 'AnnotationService',
         };
 
         for (const cb of checkboxes) {
@@ -232,10 +233,13 @@
                 continue;
             }
 
+            const serviceEndpoint = (data.type === 'Hypothesis' && data.username)
+                ? `${data.instance}/users/${data.username}`
+                : (data.instance || key);
             services.push({
                 id: `${existingProfile.id}#${key.replace(/[^a-zA-Z0-9]/g, '-')}`,
                 type: typeMap[data.type] || 'Service',
-                serviceEndpoint: data.instance || key,
+                serviceEndpoint,
             });
         }
 

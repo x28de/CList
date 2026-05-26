@@ -692,8 +692,14 @@
     mask: url('../assets/icons/opml-mask.svg') no-repeat center / contain;
   }
 
+  .account-icon-img--hypothesis {
+    -webkit-mask: url('../assets/icons/hypothesis.svg') no-repeat center / contain;
+    mask: url('../assets/icons/hypothesis.svg') no-repeat center / contain;
+  }
+
   .account-button.selected .account-icon-img,
   .account-button.selected .account-icon-img--opml,
+  .account-button.selected .account-icon-img--hypothesis,
   .account-button.selected .service-icon-img {
     background-color: white;
   }
@@ -953,6 +959,7 @@ html.dark-mode .list-tip { color: #999; border-bottom-color: #3a3a3a; }
 html.dark-mode .account-button { color: #e0e0e0; border-bottom-color: #2f2f2f; }
 html.dark-mode .account-button .material-icons { color: #777; }
 html.dark-mode .account-icon-img,
+html.dark-mode .account-icon-img--hypothesis,
 html.dark-mode .service-icon-img { background-color: #777; }
 html.dark-mode .account-button:hover  { background-color: #2f2f2f; }
 html.dark-mode .account-button:active { background-color: #2a3a2a; }

@@ -38,6 +38,23 @@
                 const value = (data[field.key] != null) ? data[field.key] : (field.default || '');
                 container.appendChild(makeFieldRow(field, mode, value));
             }
+
+            // "Make public" checkbox for account types that can appear in the DID document
+            const PUBLIC_CAPABLE = new Set(['Mastodon', 'Bluesky', 'WordPress', 'Blogger', 'Annotate', 'Hypothesis']);
+            if (PUBLIC_CAPABLE.has(schema.type)) {
+                const row = document.createElement('div');
+                row.className = 'public-toggle';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = 'publicCheckbox';
+                cb.checked = data.public || false;
+                const lbl = document.createElement('label');
+                lbl.htmlFor = 'publicCheckbox';
+                lbl.textContent = 'Make public (include in your DID document)';
+                row.appendChild(cb);
+                row.appendChild(lbl);
+                container.appendChild(row);
+            }
         }
 
         // Render a single label+input row. editable:false fields show as text in edit mode.
@@ -132,7 +149,49 @@
                 const el = document.getElementById(field.key + 'Input');
                 instanceData[field.key] = el ? el.value : (field.default || '');
             }
+            const publicEl = document.getElementById('publicCheckbox');
+            if (publicEl) instanceData.public = publicEl.checked;
             if (!instanceData.title) { window.parent.showStatusMessage('Please enter a Title.'); return; }
+
+            // Hypothesis: verify the API key belongs to the claimed username before saving.
+            if (currentSchema.type === 'Hypothesis') {
+                if (!instanceData.apiKey) {
+                    window.parent.showStatusMessage('Hypothes.is account requires an API key.');
+                    return;
+                }
+                if (!instanceData.username) {
+                    window.parent.showStatusMessage('Hypothes.is account requires a username.');
+                    return;
+                }
+                try {
+                    const apiBase = instanceData.instance?.includes('hypothes.is')
+                        ? 'https://api.hypothes.is/api'
+                        : (instanceData.instance || 'https://hypothes.is').replace(/\/$/, '') + '/api';
+                    const profileResp = await fetch(`${apiBase}/profile`, {
+                        headers: { Accept: 'application/json', Authorization: `Bearer ${instanceData.apiKey}` }
+                    });
+                    if (!profileResp.ok) {
+                        window.parent.showStatusMessage(`Hypothes.is rejected the API key (HTTP ${profileResp.status}) — check your token and try again.`);
+                        return;
+                    }
+                    const profile = await profileResp.json();
+                    const returnedUser = (profile.userid || '').match(/^acct:([^@]+)@/)?.[1] || '';
+                    const enteredUser  = instanceData.username.split('@')[0];
+                    if (returnedUser.toLowerCase() !== enteredUser.toLowerCase()) {
+                        window.parent.showStatusMessage(
+                            `Username mismatch: API key belongs to "${returnedUser}", not "${enteredUser}". ` +
+                            'Correct the username and try again.'
+                        );
+                        return;
+                    }
+                    // Normalise to the name Hypothesis actually uses (preserves their capitalisation).
+                    instanceData.username = returnedUser;
+                } catch (err) {
+                    console.error('Hypothesis profile verification failed:', err);
+                    window.parent.showStatusMessage('Could not verify Hypothes.is account — check your connection and try again.');
+                    return;
+                }
+            }
 
             let encryptedValue;
             try {
@@ -274,6 +333,12 @@
                 span.setAttribute('aria-label', 'OPML');
                 return span;
             }
+            if (type === 'Hypothesis') {
+                const span = document.createElement('span');
+                span.className = 'account-icon-img account-icon-img--hypothesis';
+                span.setAttribute('aria-label', 'Hypothes.is');
+                return span;
+            }
             const span = document.createElement('span');
             span.className = 'material-icons';
             span.textContent = icons[type] || 'account_circle';
@@ -296,7 +361,7 @@
 
             const list = document.createElement('div');
             list.className = 'account-list';
-            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp', 'Annotate'].forEach(type => {
+            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp', 'Annotate', 'Hypothesis'].forEach(type => {
                 const btn = document.createElement('button');
                 btn.className = 'account-button';
                 btn.onclick = () => selectAccountType(type);
@@ -1117,6 +1182,12 @@
                 const span = document.createElement('span');
                 span.className = 'account-icon-img account-icon-img--opml';
                 span.setAttribute('aria-label', 'OPML');
+                return span;
+            }
+            if (type === 'Hypothesis') {
+                const span = document.createElement('span');
+                span.className = 'account-icon-img account-icon-img--hypothesis';
+                span.setAttribute('aria-label', 'Hypothes.is');
                 return span;
             }
             const materialIcons = {

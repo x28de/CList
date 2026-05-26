@@ -521,6 +521,17 @@
     margin-bottom: 4px;
 }
 
+.annotation-source {
+    color: #aaa;
+    cursor: default;
+    margin-left: 4px;
+    white-space: nowrap;
+}
+
+.annotation-source-inner {
+    font-size: 0.75em;
+}
+
 .annotation-feed-author-banner {
     display: flex;
     align-items: center;
@@ -545,6 +556,7 @@ html.dark-mode .annotations-panel { border-top-color: #3a3a3a; }
 html.dark-mode .annotation-item { border-bottom-color: #2f2f2f; }
 html.dark-mode .annotation-creator { color: #ccc; }
 html.dark-mode .annotation-date    { color: #777; }
+html.dark-mode .annotation-source  { color: #666; }
 html.dark-mode .annotation-body    { color: #e0e0e0; }
 html.dark-mode .annotation-tags    { color: #777; }
 html.dark-mode .reblog-info { border-bottom-color: #3a3a3a; }

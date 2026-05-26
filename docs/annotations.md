@@ -253,6 +253,28 @@ All write requests are validated by Pydantic before hitting the database:
 - CORS is open (`allow_origins: ["*"]`) — intentional, as annotations are a public read
   protocol. Write endpoints are protected by the auth check regardless.
 
+## Privacy: annotation servers learn which URLs you read
+
+Every time CList checks for annotations on a feed item, it sends that item's URL to each
+configured annotation server (both the native W3C server at `annotations.mooc.ca` and any
+Hypothes.is instance). This means those servers — and their operators — learn which URLs you
+are reading, and approximately when.
+
+This is an inherent consequence of querying for per-URL annotations. The same issue applies to
+DID document fetches: every time CList resolves a followed user's DID, a request is made to
+that user's kvstore host, revealing the reader's IP address.
+
+**Planned mitigation (not yet implemented):** a user-configurable annotation privacy level:
+
+| Level | Behaviour |
+|-------|-----------|
+| **Open** | Query all configured annotation services for every item (current behaviour) |
+| **Selective** | Exclude specific annotation servers from automatic queries |
+| **On-demand** | Never query annotation servers automatically; only fetch when the user explicitly clicks the annotation count for a specific item |
+| **Off** | Disable all annotation services entirely |
+
+This is tracked as a future feature. See `docs/privacy.md` for the broader privacy model.
+
 ---
 
 ## Configuration

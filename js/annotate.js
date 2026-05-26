@@ -2,7 +2,7 @@ console.log('[annotations] annotate.js loading');
 //  annotate.js  -  Annotation store account type for CList
 //  Part of CList, the next generation of learning and connecting with your community
 //
-//  Copyright National Research Council of Canada 2025
+//  Copyright Stephen Downes 2025, downes.ca
 //  Licensed under Creative Commons Attribution 4.0 International https://creativecommons.org/licenses/by/4.0/
 //
 //  This software carries NO WARRANTY OF ANY KIND.
@@ -43,9 +43,42 @@ function _didToProfileUrl(did) {
     return base + params;
 }
 
+// Derive a short human-readable service label from a creator identifier.
+// did:web:kvstore.mooc.ca:users:X  → mooc.ca
+// acct:Username@hypothes.is        → hypothes.is
+function _serviceLabel(creatorId) {
+    if (!creatorId) return '';
+    if (creatorId.startsWith('acct:')) {
+        const m = creatorId.match(/@(.+)$/);
+        return m ? m[1] : '';
+    }
+    if (creatorId.startsWith('did:web:')) {
+        const domain = creatorId.split(':')[2] || '';
+        const parts = domain.split('.');
+        return parts.length > 2 ? parts.slice(1).join('.') : domain;
+    }
+    return '';
+}
+
 // ── Add-annotation form ────────────────────────────────────────────────────────
 
 async function _submitAnnotation(panel, itemID, url, bodyText, tags, visibility, acct, token) {
+    if (acct.type === 'Hypothesis') {
+        if (typeof window.hypothesisCreate !== 'function') {
+            showStatusMessage('Hypothesis write support not loaded.');
+            return;
+        }
+        try {
+            await window.hypothesisCreate(acct, { target_url: url, body: bodyText, tags, visibility });
+            delete panel.dataset.loaded;
+            await window.showAnnotations(itemID);
+        } catch (e) {
+            showStatusMessage('Failed to save to Hypothesis: ' + e.message);
+            console.error('[hypothesis] create error', e);
+        }
+        return;
+    }
+
     const payload = {
         target_url: url,
         body: bodyText,
@@ -216,17 +249,23 @@ function _renderAnnotations(panel, annotations, writeAccts, url, token, itemID) 
             div.className = 'annotation-item';
 
             const creatorId = anno.creator?.id || anno.creator || '';
-            const creator = creatorId.replace(/^did:web:[^:]+:users:/, '') || 'Unknown';
+            const creator = anno.creator?.name
+                || creatorId.replace(/^did:web:[^:]+:users:/, '').replace(/^acct:([^@]+)@.*$/, '$1')
+                || 'Unknown';
             const body = anno.body?.value || anno.body || '';
             const date = anno.created ? new Date(anno.created).toLocaleDateString() : '';
+            const svc = anno._sourceService || _serviceLabel(creatorId);
             const tags = Array.isArray(anno.tag) ? anno.tag.join(', ') : '';
 
             const safeBody = typeof sanitizeHtml === 'function'
                 ? sanitizeHtml(body).toString()
                 : _annoHe(body);
+            const sourceLabel = (date || svc)
+                ? `<span class="annotation-source" title="${_annoHe(anno._sourceCreatorId || creatorId)}">[<span class="annotation-source-inner">${_annoHe([date, svc].filter(Boolean).join(' '))}</span>]</span>`
+                : '';
             div.innerHTML =
                 `<span class="annotation-creator">${_annoHe(creator)}</span>` +
-                `<span class="annotation-date">${_annoHe(date)}</span>` +
+                sourceLabel +
                 `<div class="annotation-body">${safeBody}</div>` +
                 (tags ? `<div class="annotation-tags">${_annoHe(tags)}</div>` : '');
 
@@ -409,6 +448,32 @@ window.openAnnotationEditor = function(itemId) {
     };
 })();
 
+// ── Annotation fetch dispatch ──────────────────────────────────────────────────
+
+// Fetch annotations for one account, dispatching on account type.
+async function _fetchAnnotationsForAccount(acct, url) {
+    if (acct.type === 'Hypothesis') {
+        return typeof window.hypothesisFetch === 'function'
+            ? await window.hypothesisFetch(acct, url)
+            : [];
+    }
+    try {
+        const resp = await fetch(
+            `${acct.instance}/annotations?target=${encodeURIComponent(url)}&limit=50`,
+            { headers: { Accept: 'application/json' } }
+        );
+        if (!resp.ok) {
+            console.error('[annotations] fetch returned', resp.status, 'from', acct.instance);
+            return [];
+        }
+        const data = await resp.json();
+        return data.items || [];
+    } catch (e) {
+        console.error('[annotations] fetch error from', acct.instance, e);
+        return [];
+    }
+}
+
 // ── Show annotations for a feed item ──────────────────────────────────────────
 
 window.showAnnotations = async function(itemID) {
@@ -440,12 +505,10 @@ window.showAnnotations = async function(itemID) {
     if (btn) btn.classList.add('action-active');
 
     try {
-        // Find configured Annotate accounts
-        const annotateAccounts = (accounts || [])
-            .map(a => parseAccountValue(a))
-            .filter(d => d && d.type === 'Annotate' && d.instance);
+        // Find all configured annotation accounts (Annotate + Hypothesis)
+        const allAccounts = await _allAnnotationAccounts();
 
-        if (!annotateAccounts.length) {
+        if (!allAccounts.length) {
             panel.dataset.loaded = 'true';
             panel.innerHTML = '<span class="feed-status-message">No annotation store configured. Add an Annotate account to get started.</span>';
             return;
@@ -453,27 +516,16 @@ window.showAnnotations = async function(itemID) {
 
         // Determine write-capable accounts and current auth token
         const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
-        const writeAccts = token
-            ? annotateAccounts.filter(a => (a.permissions || 'rw').includes('w'))
-            : [];
+        const writeAccts = allAccounts.filter(a => {
+            if (a.type === 'Hypothesis') return a.apiKey && (a.permissions || 'rw').includes('w');
+            return token && (a.permissions || 'rw').includes('w');
+        });
 
         // Fetch from all configured stores in parallel
         const allAnnotations = [];
-        await Promise.all(annotateAccounts.map(async acct => {
-            try {
-                const resp = await fetch(
-                    `${acct.instance}/annotations?target=${encodeURIComponent(url)}&limit=50`,
-                    { headers: { 'Accept': 'application/json' } }
-                );
-                if (resp.ok) {
-                    const data = await resp.json();
-                    allAnnotations.push(...(data.items || []));
-                } else {
-                    console.error('Annotation store returned', resp.status, 'for', acct.instance);
-                }
-            } catch (e) {
-                console.error('Annotation fetch error from', acct.instance, e);
-            }
+        await Promise.all(allAccounts.map(async acct => {
+            const items = await _fetchAnnotationsForAccount(acct, url);
+            allAnnotations.push(...items);
         }));
 
         panel.dataset.loaded = 'true';
@@ -544,11 +596,20 @@ async function _getFederatedAnnotationAccounts() {
             const doc = await resp.json();
             return (doc.service || [])
                 .filter(s => s.type === 'AnnotationService' && s.serviceEndpoint)
-                .map(s => ({ instance: s.serviceEndpoint }));
+                .map(s => {
+                    if (s.serviceEndpoint.includes('hypothes.is')) {
+                        const m2 = s.serviceEndpoint.match(/\/users\/([^/]+)$/);
+                        if (!m2) return null;
+                        return { type: 'Hypothesis', instance: 'https://hypothes.is', username: m2[1], apiKey: '', permissions: 'r', _did: did };
+                    }
+                    return { instance: s.serviceEndpoint };
+                })
+                .filter(Boolean);
         } catch { return []; }
     }))).flat().filter(acct => {
-        if (seen.has(acct.instance)) return false;
-        seen.add(acct.instance);
+        const key = acct.type === 'Hypothesis' ? `hypothesis:${acct.username}` : acct.instance;
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
     });
 
@@ -585,15 +646,20 @@ async function _getFollowedDids() {
     _followedDidsCacheTime = Date.now();
     return dids;
 }
+window._getFollowedDids = _getFollowedDids;
 
 // Returns the combined list of local + federated annotation accounts, deduplicated by instance URL.
 async function _allAnnotationAccounts() {
     const local = (accounts || [])
         .map(a => parseAccountValue(a))
-        .filter(d => d && d.type === 'Annotate' && d.instance);
+        .filter(d => d && (d.type === 'Annotate' || d.type === 'Hypothesis') && d.instance);
     const federated = await _getFederatedAnnotationAccounts();
+    const hasConfiguredHypothesis = local.some(a => a.type === 'Hypothesis');
     const seen = new Set(local.map(a => a.instance));
-    return [...local, ...federated.filter(a => !seen.has(a.instance))];
+    return [...local, ...federated.filter(a => {
+        if (a.type === 'Hypothesis') return !hasConfiguredHypothesis;
+        return !seen.has(a.instance);
+    })];
 }
 
 // ── Batch annotation check (runs after feed renders) ──────────────────────────
@@ -623,7 +689,10 @@ window.checkAnnotationsBatch = async function() {
         console.log('[annotations] batch check: sending', urls.length, 'URLs to server');
 
         const counts = {};
-        await Promise.all(allAccounts.map(async acct => {
+
+        // Annotate servers support a true batch endpoint
+        const batchAccounts = allAccounts.filter(a => a.type !== 'Hypothesis');
+        await Promise.all(batchAccounts.map(async acct => {
             try {
                 const resp = await fetch(`${acct.instance}/annotations/batch-check`, {
                     method: 'POST',
@@ -643,6 +712,21 @@ window.checkAnnotationsBatch = async function() {
                 console.error('[annotations] batch check error from', acct.instance, e);
             }
         }));
+
+        // Hypothesis has no batch endpoint — check each URL in parallel
+        const hypothesisAccts = allAccounts.filter(a => a.type === 'Hypothesis');
+        if (hypothesisAccts.length && typeof window.hypothesisBatchCheck === 'function') {
+            await Promise.all(hypothesisAccts.map(async acct => {
+                try {
+                    const hCounts = await window.hypothesisBatchCheck(acct, urls);
+                    Object.entries(hCounts).forEach(([url, cnt]) => {
+                        counts[url] = (counts[url] || 0) + cnt;
+                    });
+                } catch (e) {
+                    console.error('[annotations] Hypothesis batch check failed:', e);
+                }
+            }));
+        }
 
         const matchedCount = Object.values(counts).filter(c => c > 0).length;
         console.log('[annotations] batch check: counts for', matchedCount, 'URLs:', counts);
@@ -899,17 +983,11 @@ window.showAnnotationThread = async function(itemId) {
     await Promise.all((await _allAnnotationAccounts()).map(async acct => {
         try {
             await Promise.all(checkUrls.map(async u => {
-                const resp = await fetch(
-                    `${acct.instance}/annotations?target=${encodeURIComponent(u)}&limit=50`,
-                    { headers: { 'Accept': 'application/json' } }
-                );
-                if (resp.ok) {
-                    const data = await resp.json();
-                    rawAnnotations.push(...(data.items || []));
-                }
+                const items = await _fetchAnnotationsForAccount(acct, u);
+                rawAnnotations.push(...items);
             }));
         } catch (e) {
-            console.error('Annotation fetch error', e);
+            console.error('[annotations] fetch error from', acct.instance, e);
         }
     }));
     const seen = new Set();
@@ -920,11 +998,12 @@ window.showAnnotationThread = async function(itemId) {
     });
 
     // When logged in: show only own annotations + annotations from followed users.
+    // acct: creators (Hypothesis) are pre-filtered by hypothesisFetch to own + followed, so pass them through.
     // When not logged in: show all (federated set is empty anyway, so these are just local public annotations).
     const displayAnnotations = token
         ? allAnnotations.filter(a => {
               const c = a.creator?.id || a.creator || '';
-              return (myDid && c === myDid) || followedDids.has(c);
+              return (myDid && c === myDid) || followedDids.has(c) || c.startsWith('acct:');
           })
         : allAnnotations;
 
@@ -1002,23 +1081,30 @@ window.showAnnotationThread = async function(itemId) {
             const box = document.createElement('div');
             box.className = 'status-box';
             const creatorId = anno.creator?.id || anno.creator || '';
-            const username = creatorId.replace(/^did:web:[^:]+:users:/, '') || 'Unknown';
+            const username = anno.creator?.name
+                || creatorId.replace(/^did:web:[^:]+:users:/, '').replace(/^acct:([^@]+)@.*$/, '$1')
+                || 'Unknown';
             const profileUrl = _didToProfileUrl(creatorId);
-            const didIcon = profileUrl
-                ? ` <a href="${_annoHe(profileUrl)}" target="_blank" title="DID profile" class="did-profile-link"><span class="material-icons md-18">account_circle</span></a>`
-                : '';
             const body = anno.body?.value || anno.body || '';
             const date = anno.created ? new Date(anno.created).toLocaleDateString() : '';
+            const svc = anno._sourceService || _serviceLabel(creatorId);
             const tags = Array.isArray(anno.tag) ? anno.tag.join(', ') : '';
             const safeBody = typeof sanitizeHtml === 'function'
                 ? sanitizeHtml(body).toString()
                 : _annoHe(body);
+            const sourceInner = [date, svc].filter(Boolean).join(' ');
+            const sourceSpan = sourceInner
+                ? `<span class="annotation-source" title="${_annoHe(anno._sourceCreatorId || creatorId)}">[<span class="annotation-source-inner">${_annoHe(sourceInner)}</span>]</span>`
+                : '';
+            const profileLink = profileUrl
+                ? ` <a href="${_annoHe(profileUrl)}" target="_blank" title="${_annoHe(creatorId)}" class="did-profile-link"><span class="material-icons md-18">account_circle</span></a>`
+                : '';
             const content = document.createElement('div');
             content.className = 'status-content';
             content.innerHTML =
                 `<div class="annotation-meta">` +
-                    `<span class="annotation-creator">${_annoHe(username)}</span>${didIcon}` +
-                    `<span class="annotation-date">${_annoHe(date)}</span>` +
+                    `<span class="annotation-creator">${_annoHe(username)}</span>${profileLink}` +
+                    sourceSpan +
                 `</div>` +
                 `<div class="annotation-body">${safeBody}</div>` +
                 (tags ? `<div class="annotation-tags">${_annoHe(tags)}</div>` : '');
@@ -1053,17 +1139,24 @@ window.showAnnotationThread = async function(itemId) {
                     }));
                     actions.appendChild(flowBtn);
                 }
-                const alreadyFollowing = followedDids.has(creatorId);
                 const followBtn = document.createElement('button');
                 followBtn.className = 'clist-action-btn';
-                followBtn.title = alreadyFollowing ? 'Following' : 'Follow this person';
-                followBtn.innerHTML = `<span class="material-icons md-18 md-light">${alreadyFollowing ? 'how_to_reg' : 'person_add'}</span>`;
-                followBtn.disabled = alreadyFollowing;
-                if (!alreadyFollowing) {
-                    followBtn.addEventListener('click', () => _followUser(creatorId, token, followBtn).catch(e => {
-                        showStatusMessage('Follow error: ' + e.message);
-                        console.error('Follow error', e);
-                    }));
+                if (creatorId.startsWith('did:')) {
+                    const alreadyFollowing = followedDids.has(creatorId);
+                    followBtn.title = alreadyFollowing ? 'Following' : 'Follow this person';
+                    followBtn.innerHTML = `<span class="material-icons md-18 md-light">${alreadyFollowing ? 'how_to_reg' : 'person_add'}</span>`;
+                    followBtn.disabled = alreadyFollowing;
+                    if (!alreadyFollowing) {
+                        followBtn.addEventListener('click', () => _followUser(creatorId, token, followBtn).catch(e => {
+                            showStatusMessage('Follow error: ' + e.message);
+                            console.error('Follow error', e);
+                        }));
+                    }
+                } else {
+                    // Fallback: creator identity not resolved to a DID
+                    followBtn.title = 'Follow';
+                    followBtn.innerHTML = '<span class="material-icons md-18 md-light">person_add</span>';
+                    followBtn.disabled = true;
                 }
                 actions.appendChild(followBtn);
                 box.appendChild(actions);

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CList</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      color: #222;
+      background: #fff;
+      width: 360px;
+    }
+
+    /* ── Screens ────────────────────────────────────────────────────────── */
+
+    .screen { display: none; flex-direction: column; gap: 10px; padding: 14px; }
+
+    /* ── Login ──────────────────────────────────────────────────────────── */
+
+    #screen-login .logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: rgb(81,177,88);
+      text-align: center;
+      letter-spacing: -0.5px;
+    }
+    #screen-login .tagline {
+      font-size: 0.78rem;
+      color: #888;
+      text-align: center;
+      margin-top: -6px;
+    }
+
+    label { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; color: #666; }
+
+    input[type="text"], input[type="password"], input[type="url"], select, textarea {
+      padding: 6px 9px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      width: 100%;
+      color: #222;
+      background: #fafafa;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid rgb(81,177,88);
+      border-color: transparent;
+      background: #fff;
+    }
+    textarea { resize: vertical; }
+
+    .btn-primary {
+      padding: 8px 16px;
+      background: rgb(81,177,88);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-primary:hover { background: rgb(60,150,67); }
+    .btn-primary:disabled { opacity: 0.55; cursor: default; }
+
+    .btn-secondary {
+      padding: 6px 12px;
+      background: #e8e8e8;
+      color: #444;
+      border: none;
+      border-radius: 5px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { background: #d4d4d4; }
+    .btn-secondary:disabled { opacity: 0.55; cursor: default; }
+
+    .error-msg { color: #c0392b; font-size: 0.8rem; min-height: 1.1em; }
+
+    /* ── Main ───────────────────────────────────────────────────────────── */
+
+    #screen-main header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .logo-sm { font-weight: 800; color: rgb(81,177,88); font-size: 1rem; letter-spacing: -0.3px; }
+    #display-username { font-size: 0.78rem; color: #888; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #bbb;
+      font-size: 1rem;
+      padding: 2px 4px;
+      border-radius: 3px;
+      line-height: 1;
+    }
+    .icon-btn:hover { color: #555; background: #f0f0f0; }
+
+    #settings-section {
+      display: none;
+      background: #f9f9f9;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      padding: 10px;
+      gap: 8px;
+      flex-direction: column;
+    }
+    #settings-section label { font-size: 0.75rem; }
+
+    .url-bar {
+      font-size: 0.75rem;
+      color: #555;
+      background: #f4f4f4;
+      padding: 5px 8px;
+      border-radius: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Tabs ───────────────────────────────────────────────────────────── */
+
+    .tabs { display: flex; gap: 3px; }
+    .tab {
+      flex: 1;
+      padding: 6px 4px;
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      border-bottom: none;
+      border-radius: 5px 5px 0 0;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+    }
+    .tab:hover { background: #eaeaea; }
+    .tab.active { background: rgb(81,177,88); color: #fff; border-color: rgb(81,177,88); font-weight: 600; }
+
+    .tab-panel {
+      border: 1px solid #ddd;
+      border-radius: 0 0 5px 5px;
+      padding: 10px;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    /* ── Annotate tab ───────────────────────────────────────────────────── */
+
+    #no-url-warning {
+      font-size: 0.82rem;
+      color: #888;
+      text-align: center;
+      padding: 10px 0;
+    }
+    #annotate-form { flex-direction: column; gap: 7px; }
+
+    .form-row { display: flex; gap: 7px; align-items: flex-end; }
+    .form-row select { flex: 1; }
+
+    /* ── Read tab ───────────────────────────────────────────────────────── */
+
+    #anno-list { max-height: 260px; overflow-y: auto; }
+    .anno-item {
+      padding: 7px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .anno-item:last-child { border-bottom: none; }
+    .anno-creator {
+      font-size: 0.75rem;
+      color: #999;
+      margin-bottom: 3px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .anno-date { color: #bbb; }
+    .anno-body { font-size: 0.88rem; line-height: 1.4; color: #333; }
+
+    /* ── Collect tab ────────────────────────────────────────────────────── */
+
+    #collection-list { max-height: 200px; overflow-y: auto; margin-bottom: 2px; }
+    .coll-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 0;
+      border-bottom: 1px solid #f4f4f4;
+    }
+    .coll-row:last-child { border-bottom: none; }
+    .coll-name { flex: 1; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .coll-count {
+      font-size: 0.72rem;
+      color: #bbb;
+      background: #f4f4f4;
+      border-radius: 10px;
+      padding: 1px 6px;
+      white-space: nowrap;
+    }
+    .btn-add-coll {
+      padding: 3px 11px;
+      background: rgb(81,177,88);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-add-coll:hover { background: rgb(60,150,67); }
+    .btn-add-coll:disabled, .btn-add-coll.added { background: #aaa; cursor: default; }
+
+    .new-coll-row { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid #f0f0f0; }
+    .new-coll-row input { flex: 1; }
+
+    /* ── Status ─────────────────────────────────────────────────────────── */
+
+    .status { min-height: 1.3em; font-size: 0.8rem; padding: 0 1px; }
+    .status.ok    { color: rgb(60,150,67); }
+    .status.error { color: #c0392b; }
+
+    /* ── State messages ─────────────────────────────────────────────────── */
+
+    .msg-loading, .msg-empty {
+      font-size: 0.84rem;
+      color: #aaa;
+      text-align: center;
+      padding: 12px 0;
+    }
+    .msg-error { font-size: 0.84rem; color: #c0392b; padding: 8px 0; }
+
+    /* ── Sidebar toggle bar ─────────────────────────────────────────────── */
+
+    #sidebar-bar {
+      border-top: 1px solid #eee;
+      padding: 6px 14px;
+      margin: 0 -14px -14px;   /* bleed to screen edges */
+      background: #fafafa;
+    }
+    #btn-pin {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.78rem;
+      color: #888;
+      padding: 0;
+      width: 100%;
+      text-align: center;
+    }
+    #btn-pin:hover { color: rgb(81,177,88); }
+
+    /* ── Sidebar mode ───────────────────────────────────────────────────── */
+
+    body.sidebar-mode { width: 100%; min-width: 0; }
+    body.sidebar-mode #anno-list       { max-height: 50vh; }
+    body.sidebar-mode #collection-list { max-height: 45vh; }
+    body.sidebar-mode #btn-pin { color: rgb(81,177,88); }
+  </style>
+</head>
+<body>
+
+  <!-- ── Login screen ─────────────────────────────────────────────────── -->
+
+  <div id="screen-login" class="screen">
+    <div class="logo">CList</div>
+    <p class="tagline">Annotate &amp; Collect</p>
+
+    <label>kvstore URL
+      <input id="kvstore-url" type="url" value="https://kvstore.mooc.ca" autocomplete="off" spellcheck="false">
+    </label>
+    <label>Annotations service URL
+      <input id="anno-svc-url" type="url" value="https://annotations.mooc.ca" autocomplete="off" spellcheck="false">
+    </label>
+    <label>Username
+      <input id="login-username" type="text" autocomplete="username" spellcheck="false">
+    </label>
+    <label>Password
+      <input id="login-password" type="password" autocomplete="current-password">
+    </label>
+    <button id="btn-login" class="btn-primary">Log In</button>
+    <p id="login-error" class="error-msg"></p>
+  </div>
+
+  <!-- ── Main screen ──────────────────────────────────────────────────── -->
+
+  <div id="screen-main" class="screen">
+
+    <header>
+      <span class="logo-sm">CList</span>
+      <span id="display-username"></span>
+      <button id="btn-settings" class="icon-btn" title="Settings">⚙</button>
+      <button id="btn-logout"   class="icon-btn" title="Log out">⏏</button>
+    </header>
+
+    <!-- Inline settings panel (hidden by default) -->
+    <div id="settings-section">
+      <label>kvstore URL
+        <input id="settings-kvstore-url" type="url" spellcheck="false">
+      </label>
+      <label>Annotations service URL
+        <input id="settings-anno-svc-url" type="url" spellcheck="false">
+      </label>
+      <button id="btn-save-settings" class="btn-secondary">Save</button>
+    </div>
+
+    <div id="current-url" class="url-bar" title=""></div>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="annotate">Annotate</button>
+      <button class="tab"        data-tab="read">Read</button>
+      <button class="tab"        data-tab="collect">Collect</button>
+    </nav>
+
+    <!-- Annotate tab -->
+    <div id="tab-annotate" class="tab-panel">
+      <p id="no-url-warning" style="display:none">
+        This page cannot be annotated (not an http/https URL).
+      </p>
+      <div id="annotate-form">
+        <textarea id="anno-body" placeholder="Your annotation… (Ctrl+Enter to save)" rows="5"></textarea>
+        <input id="anno-tags" type="text" placeholder="Tags (comma-separated, optional)">
+        <div class="form-row">
+          <select id="anno-visibility">
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
+          <button id="btn-annotate" class="btn-primary" style="width:auto;flex-shrink:0">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Read tab -->
+    <div id="tab-read" class="tab-panel" style="display:none">
+      <div id="anno-list"><p class="msg-empty">Switch to this tab to load annotations.</p></div>
+    </div>
+
+    <!-- Collect tab -->
+    <div id="tab-collect" class="tab-panel" style="display:none">
+      <div id="collection-list"><p class="msg-empty">Switch to this tab to load collections.</p></div>
+      <div class="new-coll-row">
+        <input id="new-collection-name" type="text" placeholder="New collection name">
+        <button id="btn-create-collection" class="btn-secondary">Create</button>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="sidebar-bar">
+      <button id="btn-pin">Open as sidebar →</button>
+    </div>
+
+  </div><!-- /screen-main -->
+
+  <script src="crypto_utils.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

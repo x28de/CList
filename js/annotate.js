@@ -21,13 +21,8 @@ window.accountSchemas['Annotate'] = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function _annoHe(s) {
-    return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
+// escapeHtml is defined in utilities.js
+const _annoHe = escapeHtml;
 
 // Convert a did:web:host:users:username DID to a human-readable profile URL.
 // Passes the visitor's kvstore URL (so the profile page can build a Follow link)
@@ -70,8 +65,6 @@ async function _submitAnnotation(panel, itemID, url, bodyText, tags, visibility,
         }
         try {
             await window.hypothesisCreate(acct, { target_url: url, body: bodyText, tags, visibility });
-            delete panel.dataset.loaded;
-            await window.showAnnotations(itemID);
         } catch (e) {
             showStatusMessage('Failed to save to Hypothesis: ' + e.message);
             console.error('[hypothesis] create error', e);
@@ -99,9 +92,6 @@ async function _submitAnnotation(panel, itemID, url, bodyText, tags, visibility,
         });
 
         if (resp.ok) {
-            // Force reload of the panel
-            delete panel.dataset.loaded;
-            await window.showAnnotations(itemID);
         } else {
             const err = await resp.json().catch(() => ({}));
             if (resp.status === 403 && (err.detail || '').includes('Not registered')) {
@@ -226,58 +216,6 @@ function _appendAddForm(panel, itemID, url, writeAccts, token) {
     panel.appendChild(wrapper);
 }
 
-// ── Render ─────────────────────────────────────────────────────────────────────
-
-function _renderAnnotations(panel, annotations, writeAccts, url, token, itemID) {
-    panel.innerHTML = '';
-
-    const header = document.createElement('div');
-    header.style.cssText = 'font-size:0.75rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;';
-    header.textContent = annotations.length
-        ? `${annotations.length} annotation${annotations.length === 1 ? '' : 's'}`
-        : 'Annotations';
-    panel.appendChild(header);
-
-    if (!annotations.length) {
-        const empty = document.createElement('span');
-        empty.className = 'feed-status-message';
-        empty.textContent = 'No annotations for this page yet.';
-        panel.appendChild(empty);
-    } else {
-        annotations.forEach(anno => {
-            const div = document.createElement('div');
-            div.className = 'annotation-item';
-
-            const creatorId = anno.creator?.id || anno.creator || '';
-            const creator = anno.creator?.name
-                || creatorId.replace(/^did:web:[^:]+:users:/, '').replace(/^acct:([^@]+)@.*$/, '$1')
-                || 'Unknown';
-            const body = anno.body?.value || anno.body || '';
-            const date = anno.created ? new Date(anno.created).toLocaleDateString() : '';
-            const svc = anno._sourceService || _serviceLabel(creatorId);
-            const tags = Array.isArray(anno.tag) ? anno.tag.join(', ') : '';
-
-            const safeBody = typeof sanitizeHtml === 'function'
-                ? sanitizeHtml(body).toString()
-                : _annoHe(body);
-            const sourceLabel = (date || svc)
-                ? `<span class="annotation-source" title="${_annoHe(anno._sourceCreatorId || creatorId)}">[<span class="annotation-source-inner">${_annoHe([date, svc].filter(Boolean).join(' '))}</span>]</span>`
-                : '';
-            div.innerHTML =
-                `<span class="annotation-creator">${_annoHe(creator)}</span>` +
-                sourceLabel +
-                `<div class="annotation-body">${safeBody}</div>` +
-                (tags ? `<div class="annotation-tags">${_annoHe(tags)}</div>` : '');
-
-            panel.appendChild(div);
-        });
-    }
-
-    if (writeAccts && writeAccts.length && token) {
-        _appendAddForm(panel, itemID, url, writeAccts, token);
-    }
-}
-
 // ── Open write-pane annotation editor ─────────────────────────────────────────
 
 let _annotationTarget = null;   // full reference object captured when editor is opened
@@ -387,7 +325,7 @@ window.openAnnotationEditor = function(itemId) {
                         guid:        ref.guid        || '',
                     },
                     body:       content,
-                    tags:       [],
+                    tags:       window.getWriteTags?.() || [],
                     visibility: 'public',
                     motivation: 'commenting',
                 };
@@ -427,6 +365,7 @@ window.openAnnotationEditor = function(itemId) {
             if (successCount === 0) return null;
 
             if (successCount === 1) {
+                _offerCollectAfterAnnotation(refs[0]).catch(e => console.error('[annotations] offer collect', e));
                 // Single item: let the caller display the link in #post-result normally
                 return firstId;
             }
@@ -447,6 +386,56 @@ window.openAnnotationEditor = function(itemId) {
         }
     };
 })();
+
+async function _offerCollectAfterAnnotation(ref) {
+    if (!ref?.url || ref.url === '(no URL provided)') return;
+    const itemId = ref.statusID || ref.id;
+    if (!itemId) return;
+
+    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
+    if (!token) return;
+
+    try {
+        const encKey = await getEncKey(flaskSiteUrl);
+        if (!encKey) return;
+        const resp = await fetch(`${flaskSiteUrl}/get_kvs/`,
+            { headers: { Authorization: 'Bearer ' + token } });
+        if (!resp.ok) return;
+        const kvs = await resp.json();
+        for (const kv of kvs.filter(k => k.key.startsWith('collection:'))) {
+            try {
+                const items = JSON.parse(await decryptWithKey(encKey, kv.value)) || [];
+                if (items.some(i => i.url === ref.url)) return;
+            } catch { continue; }
+        }
+    } catch (e) {
+        console.error('[annotations] collection check error', e);
+        return;
+    }
+
+    // setTimeout(0) lets publish.js complete its synchronous DOM writes to #post-result
+    // before we append the collect prompt below them
+    setTimeout(() => {
+        const resultDiv = document.getElementById('post-result');
+        if (!resultDiv || !document.body.contains(resultDiv)) return;
+
+        const prompt = document.createElement('div');
+        prompt.style.cssText = 'margin-top:8px;display:flex;align-items:center;gap:8px;';
+        const msg = document.createElement('span');
+        msg.style.fontSize = '0.85rem';
+        msg.textContent = 'Add this item to a collection?';
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn';
+        addBtn.textContent = 'Add';
+        addBtn.addEventListener('click', () => {
+            prompt.remove();
+            if (typeof window.collectItem === 'function') window.collectItem(itemId, { glow: true });
+        });
+        prompt.appendChild(msg);
+        prompt.appendChild(addBtn);
+        resultDiv.appendChild(prompt);
+    }, 0);
+}
 
 // ── Annotation fetch dispatch ──────────────────────────────────────────────────
 
@@ -474,68 +463,7 @@ async function _fetchAnnotationsForAccount(acct, url) {
     }
 }
 
-// ── Show annotations for a feed item ──────────────────────────────────────────
 
-window.showAnnotations = async function(itemID) {
-    const el = document.getElementById(itemID);
-    if (!el) return;
-
-    const url = el.reference?.url;
-    if (!url || url === '(no URL provided)') {
-        showStatusMessage('No URL associated with this item.');
-        return;
-    }
-
-    const panel = document.getElementById('annotations-' + itemID);
-    if (!panel) return;
-
-    const btn = document.getElementById('anno-btn-' + itemID);
-
-    // Toggle if already loaded
-    if (panel.dataset.loaded === 'true') {
-        const isVisible = panel.style.display === 'block';
-        panel.style.display = isVisible ? 'none' : 'block';
-        if (btn) btn.classList.toggle('action-active', !isVisible);
-        return;
-    }
-
-    // First load — show loading state
-    panel.style.display = 'block';
-    panel.innerHTML = '<span style="color:#aaa;font-size:0.82rem;">Loading annotations…</span>';
-    if (btn) btn.classList.add('action-active');
-
-    try {
-        // Find all configured annotation accounts (Annotate + Hypothesis)
-        const allAccounts = await _allAnnotationAccounts();
-
-        if (!allAccounts.length) {
-            panel.dataset.loaded = 'true';
-            panel.innerHTML = '<span class="feed-status-message">No annotation store configured. Add an Annotate account to get started.</span>';
-            return;
-        }
-
-        // Determine write-capable accounts and current auth token
-        const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
-        const writeAccts = allAccounts.filter(a => {
-            if (a.type === 'Hypothesis') return a.apiKey && (a.permissions || 'rw').includes('w');
-            return token && (a.permissions || 'rw').includes('w');
-        });
-
-        // Fetch from all configured stores in parallel
-        const allAnnotations = [];
-        await Promise.all(allAccounts.map(async acct => {
-            const items = await _fetchAnnotationsForAccount(acct, url);
-            allAnnotations.push(...items);
-        }));
-
-        panel.dataset.loaded = 'true';
-        _renderAnnotations(panel, allAnnotations, writeAccts, url, token, itemID);
-    } catch (e) {
-        console.error('showAnnotations error:', e);
-        panel.dataset.loaded = 'true';
-        panel.innerHTML = '<span class="error-message">Failed to load annotations: ' + _annoHe(e.message) + '</span>';
-    }
-};
 
 // ── Federated annotation discovery ────────────────────────────────────────────
 // Reads the encrypted follows list, fetches each followed user's DID document,
@@ -602,7 +530,7 @@ async function _getFederatedAnnotationAccounts() {
                         if (!m2) return null;
                         return { type: 'Hypothesis', instance: 'https://hypothes.is', username: m2[1], apiKey: '', permissions: 'r', _did: did };
                     }
-                    return { instance: s.serviceEndpoint };
+                    return { instance: s.serviceEndpoint, _did: did };
                 })
                 .filter(Boolean);
         } catch { return []; }
@@ -678,8 +606,11 @@ window.checkAnnotationsBatch = async function() {
         const urlToItems = {};
         items.forEach(el => {
             const ref = el.reference;
-            const urlSet = [ref.url];
-            if (ref.guid && ref.guid !== ref.url) urlSet.push(ref.guid);
+            // For annotation items, only check the annotation's own ID (guid) — not the source
+            // article URL, which would inherit the article's count and cause circular display.
+            const urlSet = ref.isAnnotation
+                ? (ref.guid && ref.guid !== '(no URL provided)' ? [ref.guid] : [])
+                : [ref.url, ...(ref.guid && ref.guid !== ref.url ? [ref.guid] : [])];
             urlSet.forEach(u => {
                 if (!urlToItems[u]) urlToItems[u] = [];
                 urlToItems[u].push(el);
@@ -733,7 +664,9 @@ window.checkAnnotationsBatch = async function() {
 
         items.forEach(el => {
             const ref = el.reference;
-            const count = counts[ref.url] || counts[ref.guid] || 0;
+            const count = ref.isAnnotation
+                ? (counts[ref.guid] || 0)
+                : (counts[ref.url] || counts[ref.guid] || 0);
             if (!count) return;
             const itemId = el.id;
             if (!itemId) { console.warn('[annotations] item has no id', el); return; }
@@ -746,8 +679,8 @@ window.checkAnnotationsBatch = async function() {
             const btn = document.createElement('button');
             btn.className = 'anno-read-btn';
             btn.title = 'Read annotations';
-            btn.innerHTML = `<span class="material-icons md-18">rate_review</span>&thinsp;(${count})`;
-            btn.addEventListener('click', () => window.showAnnotationThread(itemId));
+            btn.innerHTML = `<span class="material-icons md-18">comment</span>&thinsp;(${count})`;
+            btn.addEventListener('click', () => window.showAnnotationsForItem(itemId));
             statusActions.appendChild(btn);
         });
 
@@ -934,12 +867,14 @@ async function _followUser(did, token, btn) {
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify({ key, value: encryptedValue }),
         });
-        if (resp.ok) {
+        if (resp.ok || resp.status === 409) {
             btn.innerHTML = '<span class="material-icons md-18 md-light">how_to_reg</span>';
             btn.title = 'Following';
-            showStatusMessage('Now following ' + did.replace(/^did:web:[^:]+:users:/, ''));
-            _followedDidsCache = null;
-            _federatedCache    = null;
+            if (resp.ok) {
+                showStatusMessage('Now following ' + did.replace(/^did:web:[^:]+:users:/, ''));
+                _followedDidsCache = null;
+                _federatedCache    = null;
+            }
         } else {
             showStatusMessage('Follow failed (server error ' + resp.status + ') — try again or re-add your account.');
             console.error('Follow failed', resp.status);
@@ -952,7 +887,245 @@ async function _followUser(did, token, btn) {
     }
 }
 
-window.showAnnotationThread = async function(itemId) {
+// ── Unified annotation item builder ───────────────────────────────────────────
+
+const _ANNO_BODY_THRESHOLD = 400;
+
+// Builds a first-class feed item for one annotation.
+// options.showUrl      — include source-page title/link in statusSpecific (true for showAllAnnotations)
+// options.myDid        — logged-in user's DID (no follow/flow buttons on own annotations)
+// options.token        — auth token
+// options.writeAccts   — write-capable annotation accounts (for Flow)
+// options.followedDids — Set of followed DIDs
+// options.url          — target URL context for Flow (defaults to anno.target.source)
+function _buildAnnotationItem(anno, options = {}) {
+    const {
+        showUrl      = true,
+        myDid        = '',
+        token        = '',
+        writeAccts   = [],
+        followedDids = new Set(),
+        url          = '',
+    } = options;
+
+    const sourceUrl   = anno.target?.source || '';
+    const title       = anno.target?.selector?.title || sourceUrl || '(untitled)';
+    const creatorId   = anno.creator?.id || anno.creator || '';
+    const creatorName = anno.creator?.name
+        || creatorId.replace(/^did:web:[^:]+:users:/, '').replace(/^acct:([^@]+)@.*$/, '$1')
+        || 'Unknown';
+    const _b = anno.body;
+    const bodyRaw = !_b ? ''
+        : typeof _b === 'string'  ? _b
+        : Array.isArray(_b)       ? _b.map(i => i?.value || '').join(' ')
+        : typeof _b === 'object'  ? (_b.value || '')
+        : String(_b);
+    const date        = anno.created ? new Date(anno.created).toLocaleDateString() : '';
+    const svc         = anno._sourceService || _serviceLabel(creatorId);
+    const tags        = Array.isArray(anno.tag) ? anno.tag.join(', ') : '';
+    const via         = anno.target_selector?.via || '';
+    const isOwn       = !!(myDid && creatorId === myDid);
+    const flowUrl     = url || sourceUrl;
+
+    const safeBody = typeof sanitizeHtml === 'function'
+        ? sanitizeHtml(bodyRaw).toString() : _annoHe(bodyRaw);
+
+    const itemID    = createUniqueIdFromUrl(anno.id || sourceUrl);
+    const plainLen  = bodyRaw.replace(/<[^>]+>/g, '').length;
+    const isLong    = plainLen > _ANNO_BODY_THRESHOLD;
+
+    const statusBox = document.createElement('div');
+    statusBox.className = 'status-box';
+
+    const statusContent = document.createElement('div');
+    statusContent.className = 'status-content';
+
+    const statusSpecific = document.createElement('div');
+    statusSpecific.className = 'statusSpecific';
+    statusSpecific.id = itemID;
+
+    // Source-page title link — only for showAllAnnotations
+    if (showUrl && /^https?:\/\//i.test(sourceUrl)) {
+        const titleEl = document.createElement('a');
+        titleEl.href = sourceUrl;
+        titleEl.target = '_blank';
+        titleEl.rel = 'noopener noreferrer';
+        titleEl.textContent = title;
+        statusSpecific.appendChild(titleEl);
+        statusSpecific.appendChild(document.createElement('br'));
+    }
+
+    // annotation-meta: creator + follow/following icon (if not own) + source span
+    const metaDiv = document.createElement('div');
+    metaDiv.className = 'annotation-meta';
+
+    const creatorSpan = document.createElement('span');
+    creatorSpan.className = 'annotation-creator';
+    creatorSpan.textContent = creatorName;
+    metaDiv.appendChild(creatorSpan);
+
+    if (token && !isOwn && creatorId.startsWith('did:')) {
+        const alreadyFollowing = followedDids.has(creatorId);
+        const followBtn = document.createElement('button');
+        followBtn.className = 'clist-action-btn';
+        followBtn.title = alreadyFollowing ? 'Following' : 'Follow this person';
+        followBtn.innerHTML = `<span class="material-icons md-18 md-light">${alreadyFollowing ? 'how_to_reg' : 'person_add'}</span>`;
+        followBtn.disabled = alreadyFollowing;
+        if (!alreadyFollowing) {
+            followBtn.addEventListener('click', () => _followUser(creatorId, token, followBtn).catch(e => {
+                showStatusMessage('Follow error: ' + e.message);
+                console.error('Follow error', e);
+            }));
+        }
+        metaDiv.appendChild(followBtn);
+    }
+
+    const sourceInner = [date, svc].filter(Boolean).join(' ');
+    if (sourceInner) {
+        const sourceSpan = document.createElement('span');
+        sourceSpan.className = 'annotation-source';
+        sourceSpan.title = anno._sourceCreatorId || creatorId;
+        const inner = document.createElement('span');
+        inner.className = 'annotation-source-inner';
+        inner.textContent = sourceInner;
+        sourceSpan.appendChild(document.createTextNode('['));
+        sourceSpan.appendChild(inner);
+        sourceSpan.appendChild(document.createTextNode(']'));
+        metaDiv.appendChild(sourceSpan);
+    }
+    statusSpecific.appendChild(metaDiv);
+
+    // Body — truncated summary + hidden full version when long
+    if (isLong) {
+        const summaryEl = document.createElement('div');
+        summaryEl.id = `${itemID}-summary`;
+        summaryEl.className = 'annotation-body';
+        summaryEl.textContent = bodyRaw.replace(/<[^>]+>/g, '').slice(0, _ANNO_BODY_THRESHOLD) + '…';
+        statusSpecific.appendChild(summaryEl);
+
+        const fullEl = document.createElement('div');
+        fullEl.id = `${itemID}-content`;
+        fullEl.className = 'annotation-body';
+        fullEl.innerHTML = safeBody;
+        fullEl.style.display = 'none';
+        statusSpecific.appendChild(fullEl);
+    } else {
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'annotation-body';
+        bodyEl.innerHTML = safeBody;
+        statusSpecific.appendChild(bodyEl);
+    }
+
+    if (tags) {
+        const tagsDiv = document.createElement('div');
+        tagsDiv.className = 'annotation-tags';
+        tagsDiv.textContent = tags;
+        statusSpecific.appendChild(tagsDiv);
+    }
+
+    if (via) {
+        const viaUsername = via.replace(/^did:web:[^:]+:users:/, '');
+        const viaUrl = _didToProfileUrl(via);
+        const viaEl = document.createElement('div');
+        viaEl.className = 'annotation-via';
+        viaEl.innerHTML = `↩ via ${viaUrl
+            ? `<a href="${_annoHe(viaUrl)}" target="_blank">${_annoHe(viaUsername)}</a>`
+            : _annoHe(viaUsername)}`;
+        statusSpecific.appendChild(viaEl);
+    }
+
+    // reference — read by checkAnnotationsBatch, collectItem, clistAnnotate
+    // isAnnotation=true tells checkAnnotationsBatch to check only the annotation's own ID (guid),
+    // not the source article URL, so it doesn't inherit the article's annotation count.
+    statusSpecific.reference = {
+        author_name:  creatorName,
+        author_id:    creatorId,
+        url:          sourceUrl || '(no URL provided)',
+        guid:         anno.id || sourceUrl || '',
+        title,
+        feed:         svc,
+        feedUrl:      null,
+        created_at:   anno.created || new Date().toISOString(),
+        id:           itemID,
+        isAnnotation: true,
+    };
+
+    // ── Status actions ──────────────────────────────────────────────────────
+
+    const statusActions = document.createElement('div');
+    statusActions.className = 'status-actions';
+
+    if (isLong) {
+        let expanded = false;
+        const zoomBtn = document.createElement('button');
+        zoomBtn.className = 'clist-action-btn';
+        zoomBtn.title = 'Expand';
+        zoomBtn.innerHTML = '<span class="material-icons md-18 md-light">zoom_out_map</span>';
+        zoomBtn.addEventListener('click', () => {
+            expanded = !expanded;
+            const s = document.getElementById(`${itemID}-summary`);
+            const f = document.getElementById(`${itemID}-content`);
+            if (s) s.style.display = expanded ? 'none' : 'block';
+            if (f) f.style.display = expanded ? 'block' : 'none';
+            zoomBtn.title   = expanded ? 'Collapse' : 'Expand';
+            zoomBtn.innerHTML = `<span class="material-icons md-18 md-light">${expanded ? 'zoom_in_map' : 'zoom_out_map'}</span>`;
+        });
+        statusActions.appendChild(zoomBtn);
+    }
+
+    if (/^https?:\/\//i.test(sourceUrl)) {
+        const launchBtn = document.createElement('button');
+        launchBtn.className = 'clist-action-btn';
+        launchBtn.title = 'Open source page';
+        launchBtn.innerHTML = '<span class="material-icons md-18 md-light">launch</span>';
+        launchBtn.addEventListener('click', () => window.open(sourceUrl, '_blank', 'width=800,height=600,scrollbars=yes'));
+        statusActions.appendChild(launchBtn);
+    }
+
+    // "Read annotations" button injected here by checkAnnotationsBatch when count > 0
+
+    const collectBtn = document.createElement('button');
+    collectBtn.className = 'clist-action-btn';
+    collectBtn.id = `collect-btn-${itemID}`;
+    collectBtn.title = 'Add to collection';
+    collectBtn.innerHTML = '<span class="material-icons md-18 md-light">library_add</span>';
+    collectBtn.addEventListener('click', () => collectItem(itemID));
+    statusActions.appendChild(collectBtn);
+
+    // ── CList actions ───────────────────────────────────────────────────────
+
+    const clistActions = document.createElement('div');
+    clistActions.className = 'clist-actions';
+
+    if (token && !isOwn && writeAccts.length) {
+        const flowBtn = document.createElement('button');
+        flowBtn.className = 'clist-action-btn';
+        flowBtn.title = 'Flow — add to your annotations';
+        flowBtn.innerHTML = '<span class="material-icons md-18 md-light">forward</span>';
+        flowBtn.addEventListener('click', () => _flowAnnotation(anno, flowUrl, writeAccts, token, flowBtn).catch(e => {
+            showStatusMessage('Flow error: ' + e.message);
+            console.error('Flow error', e);
+        }));
+        clistActions.appendChild(flowBtn);
+    }
+
+    const annotateBtn = document.createElement('button');
+    annotateBtn.className = 'clist-action-btn';
+    annotateBtn.id = `anno-btn-${itemID}`;
+    annotateBtn.title = 'Write about this';
+    annotateBtn.innerHTML = '<span class="material-icons md-18 md-light">arrow_forward</span>';
+    annotateBtn.addEventListener('click', () => clistAnnotate(itemID));
+    clistActions.appendChild(annotateBtn);
+
+    statusContent.appendChild(statusSpecific);
+    statusContent.appendChild(statusActions);
+    statusBox.appendChild(statusContent);
+    statusBox.appendChild(clistActions);
+
+    return statusBox;
+}
+
+window.showAnnotationsForItem = async function(itemId) {
     const el = document.getElementById(itemId);
     if (!el || !el.reference) return;
     const fc = document.getElementById('feed-container');
@@ -1006,6 +1179,13 @@ window.showAnnotationThread = async function(itemId) {
               return (myDid && c === myDid) || followedDids.has(c) || c.startsWith('acct:');
           })
         : allAnnotations;
+
+    // Correct the button count to match what will actually render
+    const liveEl = document.getElementById(itemId);
+    if (liveEl) {
+        const btn = liveEl.parentElement?.querySelector(':scope > .status-actions .anno-read-btn');
+        if (btn) btn.innerHTML = `<span class="material-icons md-18">comment</span>&thinsp;(${displayAnnotations.length})`;
+    }
 
     // Save the current feed and scroll position
     _savedScrollTop   = fc.scrollTop;
@@ -1064,7 +1244,7 @@ window.showAnnotationThread = async function(itemId) {
     const original = el.closest('.status-box');
     if (original) {
         const clone = original.cloneNode(true);
-        clone.querySelectorAll('.status-actions, .clist-actions, .annotations-panel').forEach(n => n.remove());
+        clone.querySelectorAll('.status-actions, .clist-actions').forEach(n => n.remove());
         fc.appendChild(clone);
     }
 
@@ -1078,92 +1258,16 @@ window.showAnnotationThread = async function(itemId) {
         fc.appendChild(empty);
     } else {
         displayAnnotations.forEach(anno => {
-            const box = document.createElement('div');
-            box.className = 'status-box';
-            const creatorId = anno.creator?.id || anno.creator || '';
-            const username = anno.creator?.name
-                || creatorId.replace(/^did:web:[^:]+:users:/, '').replace(/^acct:([^@]+)@.*$/, '$1')
-                || 'Unknown';
-            const profileUrl = _didToProfileUrl(creatorId);
-            const body = anno.body?.value || anno.body || '';
-            const date = anno.created ? new Date(anno.created).toLocaleDateString() : '';
-            const svc = anno._sourceService || _serviceLabel(creatorId);
-            const tags = Array.isArray(anno.tag) ? anno.tag.join(', ') : '';
-            const safeBody = typeof sanitizeHtml === 'function'
-                ? sanitizeHtml(body).toString()
-                : _annoHe(body);
-            const sourceInner = [date, svc].filter(Boolean).join(' ');
-            const sourceSpan = sourceInner
-                ? `<span class="annotation-source" title="${_annoHe(anno._sourceCreatorId || creatorId)}">[<span class="annotation-source-inner">${_annoHe(sourceInner)}</span>]</span>`
-                : '';
-            const profileLink = profileUrl
-                ? ` <a href="${_annoHe(profileUrl)}" target="_blank" title="${_annoHe(creatorId)}" class="did-profile-link"><span class="material-icons md-18">account_circle</span></a>`
-                : '';
-            const content = document.createElement('div');
-            content.className = 'status-content';
-            content.innerHTML =
-                `<div class="annotation-meta">` +
-                    `<span class="annotation-creator">${_annoHe(username)}</span>${profileLink}` +
-                    sourceSpan +
-                `</div>` +
-                `<div class="annotation-body">${safeBody}</div>` +
-                (tags ? `<div class="annotation-tags">${_annoHe(tags)}</div>` : '');
-
-            // Show ↩ via attribution if this is a flowed annotation
-            const via = anno.target_selector?.via || '';
-            if (via) {
-                const viaUsername = via.replace(/^did:web:[^:]+:users:/, '');
-                const viaUrl = _didToProfileUrl(via);
-                const viaEl = document.createElement('div');
-                viaEl.className = 'annotation-via';
-                viaEl.innerHTML = `↩ via ${viaUrl
-                    ? `<a href="${_annoHe(viaUrl)}" target="_blank">${_annoHe(viaUsername)}</a>`
-                    : _annoHe(viaUsername)}`;
-                content.appendChild(viaEl);
-            }
-
-            box.appendChild(content);
-
-            // Action buttons (Flow, Follow) — only for annotations not owned by the logged-in user
-            if (token && creatorId !== myDid) {
-                const actions = document.createElement('div');
-                actions.className = 'status-actions';
-                if (writeAccts.length) {
-                    const flowBtn = document.createElement('button');
-                    flowBtn.className = 'clist-action-btn';
-                    flowBtn.title = 'Flow — add to your annotations';
-                    flowBtn.innerHTML = '<span class="material-icons md-18 md-light">forward</span>';
-                    flowBtn.addEventListener('click', () => _flowAnnotation(anno, url, writeAccts, token, flowBtn).catch(e => {
-                        showStatusMessage('Flow error: ' + e.message);
-                        console.error('Flow error', e);
-                    }));
-                    actions.appendChild(flowBtn);
-                }
-                const followBtn = document.createElement('button');
-                followBtn.className = 'clist-action-btn';
-                if (creatorId.startsWith('did:')) {
-                    const alreadyFollowing = followedDids.has(creatorId);
-                    followBtn.title = alreadyFollowing ? 'Following' : 'Follow this person';
-                    followBtn.innerHTML = `<span class="material-icons md-18 md-light">${alreadyFollowing ? 'how_to_reg' : 'person_add'}</span>`;
-                    followBtn.disabled = alreadyFollowing;
-                    if (!alreadyFollowing) {
-                        followBtn.addEventListener('click', () => _followUser(creatorId, token, followBtn).catch(e => {
-                            showStatusMessage('Follow error: ' + e.message);
-                            console.error('Follow error', e);
-                        }));
-                    }
-                } else {
-                    // Fallback: creator identity not resolved to a DID
-                    followBtn.title = 'Follow';
-                    followBtn.innerHTML = '<span class="material-icons md-18 md-light">person_add</span>';
-                    followBtn.disabled = true;
-                }
-                actions.appendChild(followBtn);
-                box.appendChild(actions);
-            }
-
-            fc.appendChild(box);
+            fc.appendChild(_buildAnnotationItem(anno, {
+                showUrl: false,
+                myDid,
+                token,
+                writeAccts,
+                followedDids,
+                url,
+            }));
         });
+        checkAnnotationsBatch();
     }
 
     fc.scrollTop = 0;
@@ -1176,7 +1280,7 @@ window.showAnnotationThread = async function(itemId) {
     };
     window.addEventListener('popstate', _popstateHandler);
     } catch (e) {
-        console.error('[annotations] showAnnotationThread failed:', e);
+        console.error('[annotations] showAnnotationsForItem failed:', e);
         if (_savedFeedContent) {
             while (fc.firstChild) fc.removeChild(fc.firstChild);
             fc.appendChild(_savedFeedContent);
@@ -1200,3 +1304,95 @@ window.closeAnnotationThread = function() {
         _popstateHandler = null;
     }
 };
+
+// ── Annotation feed ────────────────────────────────────────────────────────────
+
+// Render one annotation as a feed item using the same DOM shape as makeListing.
+// reference.url is set to the source page so clistAnnotate loads the right target.
+// Fetch recent annotations for one account. Returns W3C annotation objects.
+async function _fetchAnnotationFeedForAccount(acct, since) {
+    if (acct.type === 'Hypothesis') {
+        return typeof window.hypothesisFeedFetch === 'function'
+            ? await window.hypothesisFeedFetch(acct, since) : [];
+    }
+    const creatorDid = acct._did || (
+        typeof username !== 'undefined' && username &&
+        typeof flaskSiteUrl !== 'undefined' && flaskSiteUrl
+            ? `did:web:${flaskSiteUrl.replace(/^https?:\/\//, '')}:users:${username}`
+            : null
+    );
+    if (!creatorDid || !acct.instance) return [];
+    try {
+        const params = new URLSearchParams({ creator: creatorDid, limit: 50 });
+        if (since) params.set('since', since);
+        const resp = await fetch(`${acct.instance}/annotations?${params}`,
+            { headers: { Accept: 'application/json' } });
+        if (!resp.ok) {
+            console.error('[annotationfeed] server returned', resp.status, 'for', acct.instance);
+            return [];
+        }
+        return (await resp.json()).items || [];
+    } catch (e) {
+        console.error('[annotationfeed] fetch error from', acct.instance, e);
+        return [];
+    }
+}
+
+// Show a feed of recent annotations from self + all followed users.
+window.showAllAnnotations = async function() {
+    const feedContainer = document.getElementById('feed-container');
+    feedContainer.innerHTML = '<p class="feed-status-message">Loading annotations…</p>';
+
+    let allAccounts;
+    try {
+        allAccounts = await _allAnnotationAccounts();
+    } catch (e) {
+        console.error('[annotationfeed] could not load accounts', e);
+        showServiceError('feed-container', 'Annotation feed error', e.message,
+            'Check your annotation account settings under <strong>Accounts</strong>.');
+        return;
+    }
+
+    if (!allAccounts.length) {
+        feedContainer.innerHTML = '<p class="feed-status-message">No annotation accounts configured.</p>';
+        return;
+    }
+
+    const since   = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const results = await Promise.all(allAccounts.map(a => _fetchAnnotationFeedForAccount(a, since)));
+
+    const seen   = new Set();
+    const unique = results.flat()
+        .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
+        .sort((a, b) => new Date(b.created) - new Date(a.created));
+
+    feedContainer.innerHTML = '';
+    if (!unique.length) {
+        feedContainer.innerHTML = '<p class="feed-status-message">No annotations in the last 14 days.</p>';
+        return;
+    }
+    const token        = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
+    const myKvDomain   = (flaskSiteUrl || '').replace(/^https?:\/\//, '');
+    const myDid        = (typeof username !== 'undefined' && username)
+        ? `did:web:${myKvDomain}:users:${username}` : '';
+    const annotateAccts = (accounts || [])
+        .map(a => parseAccountValue(a))
+        .filter(d => d && d.type === 'Annotate' && d.instance);
+    const writeAccts   = token
+        ? annotateAccts.filter(a => (a.permissions || 'rw').includes('w'))
+        : [];
+    const followedDids = await _getFollowedDids();
+
+    for (const anno of unique) {
+        feedContainer.appendChild(_buildAnnotationItem(anno, {
+            showUrl: true,
+            myDid,
+            token,
+            writeAccts,
+            followedDids,
+        }));
+    }
+    checkAnnotationsBatch();
+};
+
+// Collections are in collections.js

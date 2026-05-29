@@ -72,15 +72,8 @@ class SafeHtml {
 }
 window.SafeHtml = SafeHtml;
 
-// HTML-escape a plain-text value for safe insertion into an HTML context.
-function _he(s) {
-    return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+// escapeHtml is defined in utilities.js
+const _he = escapeHtml;
 
 // Escape a plain-text value for use inside a JS string literal delimited by single quotes.
 function _heJs(s) {
@@ -137,6 +130,7 @@ function makeAccountList(tip, accounts, filterFn, onClickFn) {
         const btn = document.createElement('button');
         btn.className = 'account-button';
         btn.setAttribute('data-key', account.key);
+        btn.dataset.accountType = parsedValue.type || '';
         btn.onclick = () => onClickFn(account.key, parsedValue, btn);
 
         const name = document.createElement('span');
@@ -295,8 +289,8 @@ async function switchReaderAccount(key) {
     const accountData = parseAccountValue(selectedAccount);
     if (!accountData) { showStatusMessage('Could not read account data — it may be corrupt.'); return; }
     const instance = accountData.instance;
-    baseURL = extractBaseUrl(accountData.instance);
-    accessToken = accountData.id;
+    const baseURL = extractBaseUrl(accountData.instance);
+    const accessToken = accountData.id;
     const instanceType = accountData.type;
     console.log("baseURL "+baseURL+" accessRoken "+accessToken+" and Loading feed type "+accountData.type);
     setupFeedButtons(instanceType);  // Different feed buttons for different services
@@ -499,6 +493,7 @@ function makeListing(
   
     // Create reference object on the DOM element
     statusSpecific.reference = {
+      service: service || null,
       author_name: itemAuthor || '(unknown author)',
       author_id: '(unknown author ID)',
       url: itemUrl || '(no URL provided)',
@@ -507,7 +502,8 @@ function makeListing(
       feed: itemFeed || '(no feed specified)',
       feedUrl: itemFeedUrl || null,
       created_at: itemDate || new Date().toISOString(),
-      id: itemID || '(no ID)'
+      id: itemID || '(no ID)',
+      summary: (itemDesc || '').slice(0, 140)
     };
   
     // Create status actions
@@ -519,19 +515,17 @@ function makeListing(
         console.error('makeListing: no statusActions handler for service', service);
     }
     statusActions.innerHTML = _statusActionsHtml || '';
-  
+    statusActions.insertAdjacentHTML('beforeend', `
+      <button class="clist-action-btn" id="collect-btn-${itemID}" onclick="collectItem('${itemID}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
+      <button class="clist-action-btn" onclick="shareToChat('${itemID}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
+    `);
+
     // Create CList Actions
     const clistActions = document.createElement('div');
-    clistActions.classList.add('clist-actions'); // Add a class for styling
+    clistActions.classList.add('clist-actions');
     clistActions.innerHTML = `
-      <button class="clist-action-btn" id="anno-btn-${itemID}" onclick="clistAnnotate('${itemID}');" title="Annotate / add to references"><span class="material-icons md-18 md-light">rate_review</span></button>
-      <button class="clist-action-btn" onclick="shareToChat('${itemID}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
+      <button class="clist-action-btn" id="anno-btn-${itemID}" onclick="clistAnnotate('${itemID}');" title="Write about this"><span class="material-icons md-18 md-light">arrow_forward</span></button>
     `;
-
-    // Annotations panel — full-width row inside the flex status-box
-    const annotationPanel = document.createElement('div');
-    annotationPanel.className = 'annotations-panel';
-    annotationPanel.id = 'annotations-' + itemID;
 
     // Assemble
     statusContent.appendChild(statusSpecific);
@@ -539,7 +533,6 @@ function makeListing(
 
     statusBox.appendChild(statusContent);
     statusBox.appendChild(clistActions);
-    statusBox.appendChild(annotationPanel);
 
     return statusBox;
   }

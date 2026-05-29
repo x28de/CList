@@ -21,9 +21,9 @@ window.accountSchemas['Bluesky'] = {
     ]
 };
 
-let accessToken = null;
-let did = null;
-let pds = null;
+let _bskyToken = null;
+let _bskyDid   = null;
+let _bskyPds   = null;
 
 // Handlers
 
@@ -85,9 +85,9 @@ async function createBlueskySession() {
     let appPassword;
     let handle;
 
-    if (accessToken && did) {
-        console.log("Reusing existing session:", { accessToken, did, pds });
-        return { accessToken, did, pds };
+    if (_bskyToken && _bskyDid) {
+        console.log("Reusing existing session:", { _bskyToken, _bskyDid, _bskyPds });
+        return { accessToken: _bskyToken, did: _bskyDid, pds: _bskyPds };
     }
 
     if (accounts.length === 0) {
@@ -130,12 +130,12 @@ async function createBlueskySession() {
         const sessionData = await loginResponse.json();
         console.log("Session data received:", sessionData);
 
-        accessToken = sessionData.accessJwt;
-        did = sessionData.did || resolvedDid;
-        pds = pdsUrl;
+        _bskyToken = sessionData.accessJwt;
+        _bskyDid   = sessionData.did || resolvedDid;
+        _bskyPds   = pdsUrl;
 
-        console.log("Session successfully created:", { accessToken, did, pds });
-        return { accessToken, did, pds };
+        console.log("Session successfully created:", { _bskyToken, _bskyDid, _bskyPds });
+        return { accessToken: _bskyToken, did: _bskyDid, pds: _bskyPds };
 
     } catch (error) {
         console.error("Error creating session:", error);
@@ -474,6 +474,7 @@ async function displayBlueskyPosts(posts, title, cursor = null, atUri) {
             title: 'Bluesky',
             created_at: new Date().toISOString(),
             id: statusSpecific.id,
+            summary: postContent.slice(0, 140),
         };
 
         const isLiked    = !!(post.viewer && post.viewer.like);
@@ -494,27 +495,23 @@ async function displayBlueskyPosts(posts, title, cursor = null, atUri) {
         const blueskyActionButtons = document.createElement('div');
         blueskyActionButtons.classList.add('status-actions');
         blueskyActionButtons.innerHTML = `
-            <button class="material-icons md-18 md-light" onclick="openLeftInterface(blueskyReplyForm('${parentUri}','${parentCid}','${rootUri}','${rootCid}'))">reply</button>
-            <button class="material-icons md-18 md-light${isLiked ? ' action-active' : ''}" data-record-uri="${likeUri}" onclick="handleBlueskyAction('${post.uri}','${post.cid}','${postId}','favorite',this)">favorite</button>
-            <button class="material-icons md-18 md-light${isReposted ? ' action-active' : ''}" data-record-uri="${repostUri}" onclick="handleBlueskyAction('${post.uri}','${post.cid}','${postId}','repost',this)">autorenew</button>
-            ${inThread ? `<button class="material-icons md-18 md-light" onclick="displayThread('${threadUri}')">dynamic_feed</button>` : ''}
-            <button class="material-icons md-18 md-light" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+            <button class="material-icons md-18 md-light" title="Reply" onclick="openLeftInterface(blueskyReplyForm('${parentUri}','${parentCid}','${rootUri}','${rootCid}'))">reply</button>
+            <button class="material-icons md-18 md-light${isLiked ? ' action-active' : ''}" title="Like" data-record-uri="${likeUri}" onclick="handleBlueskyAction('${post.uri}','${post.cid}','${postId}','favorite',this)">favorite</button>
+            <button class="material-icons md-18 md-light${isReposted ? ' action-active' : ''}" title="Repost" data-record-uri="${repostUri}" onclick="handleBlueskyAction('${post.uri}','${post.cid}','${postId}','repost',this)">autorenew</button>
+            ${inThread ? `<button class="material-icons md-18 md-light" title="View thread" onclick="displayThread('${threadUri}')">dynamic_feed</button>` : ''}
+            <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+            <button class="clist-action-btn" id="collect-btn-${postId}" onclick="collectItem('${postId}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
+            <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
         `;
         statusContent.appendChild(blueskyActionButtons);
 
         const clistButtons = document.createElement('div');
         clistButtons.classList.add('clist-actions');
         clistButtons.innerHTML = `
-            <button class="clist-action-btn" id="anno-btn-${postId}" onclick="clistAnnotate('${postId}');" title="Annotate / add to references"><span class="material-icons md-18 md-light">rate_review</span></button>
-            <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
+            <button class="clist-action-btn" id="anno-btn-${postId}" onclick="clistAnnotate('${postId}');" title="Write about this"><span class="material-icons md-18 md-light">arrow_forward</span></button>
         `;
 
-        const annotationPanel = document.createElement('div');
-        annotationPanel.className = 'annotations-panel';
-        annotationPanel.id = 'annotations-' + postId;
-
         statusBox.appendChild(clistButtons);
-        statusBox.appendChild(annotationPanel);
 
         timelineElement.appendChild(statusBox);
     }
@@ -791,12 +788,15 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
                 title:       'Bluesky',
                 created_at:  notif.indexedAt,
                 id:          postId,
+                summary:     notif.record.text.slice(0, 140),
             };
 
             const actionButtons = document.createElement('div');
             actionButtons.classList.add('status-actions');
             actionButtons.innerHTML = `
-                <button class="material-icons md-18 md-light" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+                <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+                <button class="clist-action-btn" id="collect-btn-${postId}" onclick="collectItem('${postId}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
+                <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
             `;
             statusContent.appendChild(actionButtons);
 
@@ -804,16 +804,10 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
             clistButtons.classList.add('clist-actions');
             clistButtons.innerHTML = `
                 <button class="material-icons md-18 md-light" onclick="loadContentToEditor('${postId}');" title="Load in editor">arrow_right</button>
-                <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
-                <button class="clist-action-btn" id="anno-btn-${postId}" onclick="openAnnotationEditor('${postId}');" title="Add annotation"><span class="material-icons md-18 md-light">rate_review</span></button>
+                <button class="clist-action-btn" id="anno-btn-${postId}" onclick="openAnnotationEditor('${postId}');" title="Write about this"><span class="material-icons md-18 md-light">arrow_forward</span></button>
             `;
 
-            const annotationPanel = document.createElement('div');
-            annotationPanel.className = 'annotations-panel';
-            annotationPanel.id = 'annotations-' + postId;
-
             statusBox.appendChild(clistButtons);
-            statusBox.appendChild(annotationPanel);
         }
 
         feedContainer.appendChild(statusBox);

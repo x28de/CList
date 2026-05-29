@@ -244,16 +244,16 @@ function snapPanes(direction) {
             const actions = document.createElement("p");
             actions.className = "clist-actions";
             actions.innerHTML = `
-                <button class="material-icons md-18 md-light" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
-                <button class="material-icons md-18 md-light" onClick="handleMastodonAction('thread', 'load',this.parentElement.parentElement)">arrow_right</button>
+                <button class="material-icons md-18 md-light" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
+                <button class="material-icons md-18 md-light" title="Load thread into editor" onClick="handleMastodonAction('thread', 'load',this.parentElement.parentElement)">arrow_right</button>
                 `;
             feedHeaderDiv.appendChild(actions);
         } else if (type === 'Bluesky Thread') {
             const actions = document.createElement("p");
             actions.className = "clist-actions";
             actions.innerHTML = `
-                <button class="material-icons md-18 md-light" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
-                <button class="material-icons md-18 md-light" onClick="loadContentToEditor('feed-container')">arrow_right</button>
+                <button class="material-icons md-18 md-light" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
+                <button class="material-icons md-18 md-light" title="Load into editor" onClick="loadContentToEditor('feed-container')">arrow_right</button>
                 `;
             feedHeaderDiv.appendChild(actions);
         }

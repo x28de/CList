@@ -59,6 +59,8 @@
                     <button class="left icon-btn" onclick="playRead(); playAccounts();" title="Accounts"><span class="material-icons">person</span></button>
                     <button id="openLeftButton" class="left" onclick="playRead();" style="display:none">Read</button>
                     <button id="openFindButton" class="left" onclick="playFind();">Find</button>
+                    <button id="openAnnotationsButton" class="left" onclick="window.showAllAnnotations();">Annotations</button>
+                    <button id="openCollectionButton" class="left" onclick="window.showSavedCollections();">My Collections</button>
                     <button id="openChatButton" class="left" onclick="playChat();" style="display:none">Chat</button>
                     </div>
                     <button id="snapLeftBtn" class="pane-snap-btn" onclick="snapPanes('left')" title="Collapse/expand panes"><span class="material-icons">arrow_left</span></button>
@@ -148,8 +150,10 @@
                     <!-- Handlers defined in editors.js -->
 
                 </div>
-                
-                <div id="texteditor-references" class="allReferences"></div>                
+
+                <div id="write-tags"></div>
+
+                <div id="texteditor-references" class="allReferences"></div>
                 <!-- Other references divs may be added here dynamically -->
 
             </div> <!-- /write-pane -->
@@ -323,7 +327,9 @@
   <script src="js/tinymce.js" defer></script>        <!-- Editors -->
   <script src="js/etherpad.js" defer></script>
   <script src="js/collab.js" defer></script>
+  <script src="js/tags.js" defer></script>         <!-- Write-pane tag field -->
   <script src="js/annotate.js" defer></script>   <!-- Annotation store -->
+  <script src="js/collections.js" defer></script> <!-- Collections -->
   <script src="js/hypothesis.js" defer></script>  <!-- Hypothes.is annotation account -->
 
   <script src="js/chatgpt.js" defer></script>          <!-- AI -->

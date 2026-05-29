@@ -35,15 +35,23 @@ window.accountSchemas['Mastodon'] = {
 //    postMastodonStatus: Posts a new status or replies to an existing one.
 
 
+// Module-scope credentials — set by initialize(), read by loadMastodonFeed() etc.
+// Declared here so they shadow the <div id="baseURL"> / <div id="accessToken"> DOM
+// element implicit globals that the browser otherwise exposes on window.
+let baseURL     = null;
+let accessToken = null;
+
 // -----------------------------------------------------
 //
 // Handle Mastodon Actions
-// 
+//
 
           (function () {
               const mastodonHandler = {
-                initialize: async (baseURL, accessToken) => {
-                    await initializeMasto(baseURL, accessToken);
+                initialize: async (bUrl, token) => {
+                    baseURL     = bUrl;
+                    accessToken = token;
+                    await initializeMasto(bUrl, token);
                 },
                 onFeedClick:   null,
                 onAuthorClick: (item) => loadMastodonFeed('user', null, item.author),
@@ -647,6 +655,8 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
         }
 
         // Create reference
+        const _mEl = document.createElement('div');
+        _mEl.innerHTML = status.content;
         statusSpecific.reference = {
             author_name: status.account.display_name,
             author_id: status.account.acct,
@@ -655,6 +665,7 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
             title: 'Mastodon',
             created_at: status.created_at,
             id: status.id,
+            summary: (_mEl.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140),
         };
 
         console.log(statusSpecific);
@@ -662,7 +673,7 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
         // Determine whether the status is in a thread (ie., a value for in_reply_to_id or for replies_count)
         let threadsButton;
         if (status.in_reply_to_id || status.replies_count > 0) {
-            threadsButton = `<button class="material-icons md-18 md-light" onClick="handleMastodonAction('${status.id}', 'thread')">dynamic_feed</button>`; }
+            threadsButton = `<button class="material-icons md-18 md-light" title="View thread" onClick="handleMastodonAction('${status.id}', 'thread')">dynamic_feed</button>`; }
         else { threadsButton = ``; }
         
 
@@ -670,12 +681,14 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
         const actionButtons = document.createElement('div');
         actionButtons.classList.add('status-actions');
         actionButtons.innerHTML = `
-            <button class="material-icons md-18 md-light" onClick="handleMastodonAction('${status.id}', 'reply', this.parentElement)">reply</button>
-            <button class="material-icons md-18 md-light${status.reblogged ? ' action-active' : ''}" onClick="handleMastodonAction('${status.id}', 'boost', this)">autorenew</button>
-            <button class="material-icons md-18 md-light${status.favourited ? ' action-active' : ''}" onClick="handleMastodonAction('${status.id}', 'favorite', this)">favorite</button>
-            <button class="material-icons md-18 md-light${status.bookmarked ? ' action-active' : ''}" onClick="handleMastodonAction('${status.id}', 'bookmark', this)">bookmarks</button>
+            <button class="material-icons md-18 md-light" title="Reply" onClick="handleMastodonAction('${status.id}', 'reply', this.parentElement)">reply</button>
+            <button class="material-icons md-18 md-light${status.reblogged ? ' action-active' : ''}" title="Boost" onClick="handleMastodonAction('${status.id}', 'boost', this)">autorenew</button>
+            <button class="material-icons md-18 md-light${status.favourited ? ' action-active' : ''}" title="Favourite" onClick="handleMastodonAction('${status.id}', 'favorite', this)">favorite</button>
+            <button class="material-icons md-18 md-light${status.bookmarked ? ' action-active' : ''}" title="Bookmark" onClick="handleMastodonAction('${status.id}', 'bookmark', this)">bookmarks</button>
             ${threadsButton}
-            <button class="material-icons md-18 md-light" onClick="window.open('${status.url}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>
+            <button class="material-icons md-18 md-light" title="Open in browser" onClick="window.open('${status.url}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>
+            <button class="clist-action-btn" id="collect-btn-${status.id}" onclick="collectItem('${status.id}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
+            <button class="clist-action-btn" onclick="shareToChat('${status.id}')" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
         `;
         statusContent.appendChild(actionButtons);
 
@@ -683,18 +696,12 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
         const clistButtons = document.createElement('div');
         clistButtons.classList.add('clist-actions');
         clistButtons.innerHTML = `
-            <button class="clist-action-btn" id="anno-btn-${status.id}" onclick="clistAnnotate('${status.id}');" title="Annotate / add to references"><span class="material-icons md-18 md-light">rate_review</span></button>
-            <button class="clist-action-btn" onclick="shareToChat('${status.id}')" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
+            <button class="clist-action-btn" id="anno-btn-${status.id}" onclick="clistAnnotate('${status.id}');" title="Write about this"><span class="material-icons md-18 md-light">arrow_forward</span></button>
         `;
-
-        const annotationPanel = document.createElement('div');
-        annotationPanel.className = 'annotations-panel';
-        annotationPanel.id = 'annotations-' + status.id;
 
         // Append content and actions to the status box
         statusBox.appendChild(statusContent);
         statusBox.appendChild(clistButtons);
-        statusBox.appendChild(annotationPanel);
 
 
         // Shorten the displayed text for links

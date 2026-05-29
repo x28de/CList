@@ -206,6 +206,50 @@ window.hypothesisBatchCheck = async function(acct, urls) {
     return counts;
 };
 
+// ── Feed ───────────────────────────────────────────────────────────────────────
+
+// Fetch recent annotations by own + followed users without filtering by URL.
+// Used by showAnnotationFeed. Returns W3C annotation objects.
+window.hypothesisFeedFetch = async function(acct, since) {
+    const apiBase = _hypothesisApiBase(acct.instance);
+    const host    = new URL(acct.instance).hostname;
+    const userMap = await _hypothesisCollectUsers(acct);
+    if (!userMap.size) return [];
+
+    const headers = _hypothesisHeaders(acct);
+    const rows    = [];
+
+    await Promise.all([...userMap.keys()].map(async user => {
+        try {
+            const params = new URLSearchParams({ user, limit: 50, sort: 'created', order: 'desc' });
+            const resp   = await fetch(`${apiBase}/search?${params}`, { headers });
+            if (resp.ok) {
+                const items = (await resp.json()).rows || [];
+                rows.push(...(since ? items.filter(r => r.created >= since) : items));
+            } else {
+                console.error('[hypothesis] feed fetch returned', resp.status, 'for', user);
+            }
+        } catch (e) {
+            console.error('[hypothesis] feed fetch error for', user, e);
+        }
+    }));
+
+    const seen = new Set();
+    return rows
+        .filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; })
+        .map(row => {
+            const anno = _hypothesisToW3c(row);
+            const did  = userMap.get(row.user || '');
+            if (did) {
+                anno._sourceCreatorId = anno.creator.id;
+                anno.creator.id       = did;
+                anno.creator.name     = did.replace(/^did:web:[^:]+:users:/, '');
+            }
+            anno._sourceService = host;
+            return anno;
+        });
+};
+
 // ── Write ──────────────────────────────────────────────────────────────────────
 
 // Post a new annotation to Hypothes.is. payload matches the CList annotation

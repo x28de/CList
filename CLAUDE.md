@@ -38,6 +38,40 @@ docs/               — architecture documentation
 - `editors.js` — TinyMCE and plain-text editor management
 - `dynamicp2p.js` — PeerJS-based chat
 
+## Icon Button Pattern
+
+Standard icon button — use this pattern everywhere. It renders as a transparent button with a
+green icon (light mode) or the same green on a dark background (dark mode).
+
+**HTML / JS:**
+```html
+<button class="clist-action-btn" title="Descriptive label">
+  <span class="material-icons md-18 md-light">icon_name</span>
+</button>
+```
+
+- `clist-action-btn` — styled in `interface.css`: no border, transparent background, hover tint
+- `material-icons md-18 md-light` — Material Icons font, 18 px, green (`rgb(81,177,88)`)
+- `title="…"` — **required on every icon button**, no exceptions
+- `escapeHtml()` (`utilities.js`) — use for any untrusted text inserted via `innerHTML`
+
+**Do not** add inline `background`, `border`, or `color` to these buttons. The class handles it.
+
+## Text Button Pattern
+
+Standard text button — use `.btn` for any labelled action button. Renders as white text on green.
+
+**JS:**
+```js
+const btn = document.createElement('button');
+btn.className = 'btn';
+btn.textContent = 'Label';
+```
+
+- `.btn` — styled in `reader.css`: `rgb(81,177,88)` background, white text, 6px/14px padding
+- `.btn.btn-secondary` — grey (`#888`) for cancel / destructive-abort actions
+- **Do not** invent new button styles. Use `.btn` for primary actions and `.btn.btn-secondary` for secondary.
+
 ## Error Handling
 
 Full reference: `docs/error-handling.md`. These rules apply to all new and modified JS code.

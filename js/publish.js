@@ -106,6 +106,9 @@ function populatePostOptions(accounts) {
             const isSelected = btn.getAttribute('data-selected') === 'true';
             btn.setAttribute('data-selected', isSelected ? 'false' : 'true');
             btn.classList.toggle('selected', !isSelected);
+            if (parsedValue.type === 'Annotate') {
+                btn.classList.toggle('annotate-glow', !isSelected);
+            }
         }
     ));
 

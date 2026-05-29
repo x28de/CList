@@ -271,6 +271,7 @@ function populateLoadOptions() {
         icon:  'note_add',
         load:  async () => {
             clearDraft(currentEditor);
+            window.clearWriteTags?.();
             return { type: 'text/plain', value: '' };
         }
     });
@@ -575,8 +576,7 @@ function loadContentToEditor(itemId) {
     if (itemId === 'thread' || itemId === 'feed-container') {
         const feedContainer = document.getElementById('feed-container');
         const tempContainer = feedContainer.cloneNode(true);
-        const feedHeader = tempContainer.querySelector('.feed-header');
-        if (feedHeader) feedHeader.remove();
+        tempContainer.querySelectorAll('.feed-header, .collection-detail-header').forEach(el => el.remove());
         tempContainer.querySelectorAll('.status-actions').forEach(el => el.remove());
         tempContainer.querySelectorAll('.clist-actions').forEach(el => el.remove());
         tempContainer.querySelectorAll('.material-icons').forEach(el => el.remove());

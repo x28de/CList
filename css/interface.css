@@ -61,6 +61,7 @@
 
   #main-content {
     display: flex;
+    height: 100dvh;
     position: relative;
     transform: translateX(0); /* Translate smoothly with the pane */
     transition: transform 0.7s ease-in-out; /* Match the transition timing */
@@ -107,25 +108,25 @@
   
 
 
-    #read-pane,
-    #write-pane {
+    #read-pane {
         height: 100%;
         overflow: auto;
+        flex: 1;
+        background-color: #f5f5f5;
     }
 
-    #read-pane {
-      flex: 1; /* Default size */
-      background-color: #f5f5f5;
-  }
-
     #write-pane {
-      flex: 1; /* Default size */
-      background-color: #e5e5e5;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        background-color: #e5e5e5;
     }
 
     #write-pane-content {
-      max-height: calc(100dvh - 50px);
-      min-height: 25px;
+      flex: 1;
+      min-height: 0;
       margin: 5px 10px;
       overflow: auto;
       overflow-y: auto; 
@@ -683,6 +684,11 @@
     color: white;
   }
 
+  .account-button.annotate-glow {
+    box-shadow: 0 0 8px var(--highlight-color), 0 0 18px var(--highlight-color);
+    transition: box-shadow 0.25s ease;
+  }
+
   .account-button.selected .material-icons {
     color: white;
   }
@@ -900,6 +906,20 @@
 /* Hide social-share buttons for unregistered users */
 body:not(.user-registered) .clist-action-btn { display: none; }
 }
+
+/* ── Icon action buttons ────────────────────────────────────────────────────── */
+/* Standard pattern: <button class="clist-action-btn"><span class="material-icons md-18 md-light">icon_name</span></button> */
+/* title="…" is required on every icon button */
+.clist-action-btn {
+    background: none;
+    border: none;
+    padding: 4px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    line-height: 1;
+}
+.clist-action-btn:hover { background-color: #efede9; }
+html.dark-mode .clist-action-btn:hover { background-color: #333; }
 
 /* ── Dark mode ─────────────────────────────────────────────────────────────── */
 html.dark-mode {

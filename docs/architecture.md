@@ -6,6 +6,37 @@ Every feature that requires a back end delegates to one of the purpose-built ser
 
 ---
 
+## Learning workflow
+
+CList is organized around a single core activity: the cycle of reading, responding, and connecting that constitutes learning. The intended workflow is:
+
+**Read** — find items worth responding to in the feeds you follow.  
+**Annotate** — mark what is significant and why, as you read.  
+**Synthesize** — load selected items into the editor and compose a response.  
+**Publish** — send that response back out to the places your readers are.
+
+Every major component maps to a step in this cycle. The two-pane layout keeps reading and writing visible simultaneously. The annotation system records understanding as it forms, linked to the source material. The editor supports loading multiple items as the basis for a single composed response. The publish system reaches multiple platforms in one action.
+
+The ambition is to make this cycle fast enough that it becomes natural — not a workflow requiring a tool switch, but one that happens in the margin of reading.
+
+### Annotations as a core learning practice
+
+An annotation is more than a bookmark. It is the moment a reader becomes a writer: the decision that something is worth noting, the formulation of why, and the first draft of a response. CList's annotation system is built around this premise:
+
+- Annotations are stored on a server you control, identified by your DID — not on a third-party platform you must remain on.
+- Followed users' annotations appear alongside yours when you view an item — turning a private act into a lightweight social one.
+- "Flowing" (re-annotating with attribution) is the native gesture for saying "this is worth passing on" — distinct from a like, because it requires formulation.
+
+The annotation system is the part of CList that most directly distinguishes it from an RSS reader or a social client. It is the read-write interface — the seam where consuming and producing are the same act.
+
+### Why annotations before other features
+
+Feed reading and social posting were built first because they are the obvious necessities. But the more fundamental capability — the one that makes CList a *learning* environment rather than a communication tool — is the ability to respond to content in place: to mark *this*, right here, as what I am thinking about, and say what I think.
+
+Without annotations, CList is a feed reader with a publish button. With them, it is a tool where reading and writing are the same activity.
+
+---
+
 ## Decentralized design
 
 CList is designed so that **no single server is required and no single operator controls the system**.

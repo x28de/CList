@@ -295,7 +295,7 @@ window.addEventListener('popstate', (e) => {
             if (selectedKey === "") {
                 // Clear inputs if no account is selected
                 accessToken = '';
-                baseUrl = '';
+                baseURL = '';
                 instanceType = '';
                 return;
             }

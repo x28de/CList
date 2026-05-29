@@ -532,7 +532,7 @@ function _rssAppendPage() {
             title:      e.title,
             desc:       _rssPlainText(e.contentHtml),
             feed:       _rssTitleMap[e.feedUrl]  || e.feedUrl,
-            titleHtml:  `<strong>${e.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>`,
+            titleHtml:  `<strong>${escapeHtml(e.title)}</strong>`,
             feedUrl:    e.feedUrl,
             author:     e.author || _rssAuthorMap[e.feedUrl] || '',
             date:       new Date(e.published * 1000).toLocaleDateString(),

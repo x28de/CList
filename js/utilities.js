@@ -11,6 +11,16 @@
 // 
 
 
+// Escape a plain-text value for safe insertion into an HTML context.
+function escapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Set Cookie
 
 function setCookie(name, value, days) {

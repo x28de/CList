@@ -116,10 +116,10 @@
     }
 
     async function _fetchCollections() {
-        const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
         if (!token) { _collections = []; return; }
         try {
-            const resp = await fetch(`${flaskSiteUrl}/get_kvs/`,
+            const resp = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`,
                 { headers: { Authorization: 'Bearer ' + token } });
             if (!resp.ok) { _collections = []; return; }
             const kvs = await resp.json();
@@ -130,15 +130,15 @@
     }
 
     async function _createCollection(name) {
-        const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
         if (!token) return;
         try {
-            const encKey = await getEncKey(flaskSiteUrl);
+            const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
             if (!encKey) return;
             const encrypted = await encryptWithKey(encKey, JSON.stringify([]));
             const payload = { key: `collection:${name}`, value: encrypted };
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-            const resp = await fetch(`${flaskSiteUrl}/add_kv/`, {
+            const resp = await fetch(`${window.CList.config.flaskSiteUrl}/add_kv/`, {
                 method: 'POST', headers, body: JSON.stringify(payload)
             });
             // 409 = already exists, that's fine

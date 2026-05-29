@@ -9,8 +9,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['Mastodon'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['Mastodon'] = {
     type: 'Mastodon',
     instanceFromKey: true,
     kvKey: { label: 'Username', placeholder: 'you@mastodon.social' },
@@ -68,18 +68,18 @@ let accessToken = null;
               };
 
               // Ensure readerHandlers exists
-              if (typeof window.readerHandlers === 'undefined') {
-                window.readerHandlers = {}; // Create it if it doesn't exist
+              if (typeof window.CList.readers === 'undefined') {
+                window.CList.readers = {}; // Create it if it doesn't exist
               }
             
               // Add the handler
-              window.readerHandlers['Mastodon'] = mastodonHandler;
+              window.CList.readers['Mastodon'] = mastodonHandler;
 
            })();
 
 (function () {
-    window.publishHandlers = window.publishHandlers || {};
-    window.publishHandlers['Mastodon'] = {
+    window.CList.publishers = window.CList.publishers || {};
+    window.CList.publishers['Mastodon'] = {
         publish: async (accountData, title, content) => {
             const responseDiv = document.getElementById('post-result');
             const cleanContent = removeHtml(content);
@@ -955,10 +955,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 });
 
 async function saveMastodonAccount(title, username, accessToken, permissions) {
-    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
     if (!token) { showStatusMessage('Please log in to kvstore before authorizing Mastodon.'); return; }
 
-    const encKey = await getEncKey(flaskSiteUrl);
+    const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
     if (!encKey) { showStatusMessage('Encryption key missing — please log in again.'); return; }
 
     const instanceData = { type: 'Mastodon', id: accessToken, title: title, permissions: permissions || 'rw' };
@@ -971,10 +971,10 @@ async function saveMastodonAccount(title, username, accessToken, permissions) {
         return;
     }
 
-    const existing = Array.isArray(accounts) && accounts.find(a => a.key === username);
+    const existing = Array.isArray(window.CList.accounts) && window.CList.accounts.find(a => a.key === username);
     const endpoint = existing ? 'update_kv/' : 'add_kv/';
 
-    const response = await fetch(`${flaskSiteUrl}/${endpoint}`, {
+    const response = await fetch(`${window.CList.config.flaskSiteUrl}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({ key: username, value: encryptedValue })
@@ -983,11 +983,11 @@ async function saveMastodonAccount(title, username, accessToken, permissions) {
     if (!response.ok) { showStatusMessage('Failed to save Mastodon account to kvstore.'); return; }
 
     try {
-        accounts = await getAccounts(flaskSiteUrl);
-        if (accounts) {
+        window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
+        if (window.CList.accounts) {
             updateUIVisibility();
             await playRead();
-            populateReadAccountList(accounts);
+            populateReadAccountList(window.CList.accounts);
         }
         showStatusMessage('Mastodon account authorized and saved.');
     } catch (error) {

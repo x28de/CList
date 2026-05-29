@@ -19,12 +19,12 @@
         }
     };
     // Ensure readerHandlers exists
-    if (typeof window.readerHandlers === 'undefined') {
-    window.readerHandlers = {}; // Create it if it doesn't exist
+    if (typeof window.CList.readers === 'undefined') {
+    window.CList.readers = {}; // Create it if it doesn't exist
     }
 
     // Add the handler
-    window.readerHandlers['oasis'] = oasisHandler;
+    window.CList.readers['oasis'] = oasisHandler;
  })();
 
 

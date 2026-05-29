@@ -27,18 +27,24 @@
     <!-- onerror keeps the page working when the file is absent (normal browser use) -->
     <script src="runtime-config.js" onerror="void 0"></script>
 
-    <!-- Global Variables for essential services -->
+    <!-- CList application namespace -->
     <script>
-        let username = "none";                              // Global var for username
-        let flaskSiteUrl = 'https://kvstore.mooc.ca';   // Base URL of your account server
+        window.CList = {
+            config:     { flaskSiteUrl: 'https://kvstore.mooc.ca' },
+            state:      { username: 'none' },
+            accounts:   [],
+            schemas:    {},
+            readers:    {},
+            publishers: {},
+            savers:     [],
+            loaders:    [],
+            ui:         {}
+        };
         const _savedKvUrl = localStorage.getItem('clist_kvstore_url');
-        if (_savedKvUrl) flaskSiteUrl = _savedKvUrl;
-        // Launcher override takes highest priority (set via runtime-config.js served by launcher.py)
-        if (window._launcherConfig && window._launcherConfig.kvstoreUrl) flaskSiteUrl = window._launcherConfig.kvstoreUrl;
-        let accounts = [];                                // Global var to store accounts
-        let BaseURL = "none";
-        let accessCode = "none";
-    </script> 
+        if (_savedKvUrl) window.CList.config.flaskSiteUrl = _savedKvUrl;
+        if (window._launcherConfig && window._launcherConfig.kvstoreUrl)
+            window.CList.config.flaskSiteUrl = window._launcherConfig.kvstoreUrl;
+    </script>
 
 
 </head>

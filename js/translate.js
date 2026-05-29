@@ -30,7 +30,7 @@ function getTranslationAccount() {
 
     // Find the account with permission 't'
     // Assumes accounts array loaded with getAccounts()
-    const targetAccount = accounts.find(account => {
+    const targetAccount = window.CList.accounts.find(account => {
         const parsedValue = parseAccountValue(account);
         return parsedValue && parsedValue.permissions.includes('t');
     });

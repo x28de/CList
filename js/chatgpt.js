@@ -9,8 +9,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['AI'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['AI'] = {
     type: 'AI',
     instanceFromKey: false,
     kvKey: { label: 'Project', placeholder: 'project ID or name' },
@@ -28,10 +28,10 @@ async function generateNewTemplateFromChatGPT(templateType, outputFormat) {
     // Get generater from accounts
     // Assumes 'accounts' array has been preloaded
     // If necessary, fetch the accounts from the KVstore
-    if (accounts.length === 0) {
+    if (window.CList.accounts.length === 0) {
         try {
             // Fetch the accounts from the KVstore
-            accounts = await getAccounts(flaskSiteUrl); 
+            window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
 
         } catch (error) {
             showStatusMessage('Error getting Editor accounts: ' + error.message);
@@ -181,8 +181,8 @@ function extractCodeContent(template) {
 }
 
 (function () {
-    window.loadHandlers = window.loadHandlers || [];
-    window.loadHandlers.push({
+    window.CList.loaders = window.CList.loaders || [];
+    window.CList.loaders.push({
         label:   'Generate template',
         icon:    'auto_awesome',
         visible: () => typeof hasAIAccount === 'function' && hasAIAccount(),

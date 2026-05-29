@@ -7,8 +7,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['Hypothesis'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['Hypothesis'] = {
     type: 'Hypothesis',
     instanceFromKey: true,
     kvKey: { label: 'Server', placeholder: 'https://hypothes.is', default: 'https://hypothes.is' },
@@ -89,9 +89,9 @@ async function _hypothesisCollectUsers(acct) {
             ownerDid = acct._did;
         } else {
             // Configured own account — derive from logged-in user's kvstore identity
-            const myDomain = (typeof flaskSiteUrl !== 'undefined' && flaskSiteUrl)
-                ? flaskSiteUrl.replace(/^https?:\/\//, '') : '';
-            const myUser = (typeof username !== 'undefined') ? username : '';
+            const myDomain = (typeof window.CList.config.flaskSiteUrl !== 'undefined' && window.CList.config.flaskSiteUrl)
+                ? window.CList.config.flaskSiteUrl.replace(/^https?:\/\//, '') : '';
+            const myUser = window.CList.state.username || '';
             ownerDid = myDomain && myUser ? `did:web:${myDomain}:users:${myUser}` : '';
         }
         userMap.set(acctUri, ownerDid);
@@ -299,8 +299,8 @@ window.hypothesisCreate = async function(acct, payload) {
 // ── Publish handler ────────────────────────────────────────────────────────────
 
 (function () {
-    window.publishHandlers = window.publishHandlers || {};
-    window.publishHandlers['Hypothesis'] = {
+    window.CList.publishers = window.CList.publishers || {};
+    window.CList.publishers['Hypothesis'] = {
         construct: function(title, post) {
             const parsed = new DOMParser().parseFromString(post, 'text/html');
             const postContent = parsed.getElementById('post-content');

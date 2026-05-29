@@ -60,8 +60,8 @@ const leftContent = document.getElementById('left-content');
 if (!leftContent) { console.error('Element with ID "left-content" not found.'); }
 
 // Ensure readerHandlers exists
-if (typeof window.readerHandlers === 'undefined') {
-    window.readerHandlers = {};
+if (typeof window.CList.readers === 'undefined') {
+    window.CList.readers = {};
 }
 
 // Opaque type for HTML that has been sanitized. makeListing requires this for full_content.
@@ -176,15 +176,15 @@ async function initializeReader(readerType, baseURL, accessToken) {
 async function playRead() {
     openLeftInterface(readPanel());
 
-    if (!Array.isArray(accounts)) {
+    if (!Array.isArray(window.CList.accounts)) {
         throw new Error('Error: Accounts array not found; maybe you need to log in.');
     }
 
     try {
-        if (!accounts || accounts.length === 0) {
-            accounts = await getAccounts(flaskSiteUrl);
+        if (!window.CList.accounts || window.CList.accounts.length === 0) {
+            window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
         }
-        populateReadAccountList(accounts);
+        populateReadAccountList(window.CList.accounts);
     } catch (error) {
         showStatusMessage('Could not load accounts — try logging out and back in. ' + error.message);
     }

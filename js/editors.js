@@ -60,8 +60,8 @@ const editorHandlers = {
         initialize: () => {
 
             currentEditor = 'texteditor';
-            // alert(flaskSiteUrl);
-            etherpadUsername = getSiteSpecificCookie(flaskSiteUrl, 'username');
+            // alert(window.CList.config.flaskSiteUrl);
+            etherpadUsername = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
             if (!etherpadUsername) { etherpadUsername = 'user' + Math.floor(Math.random() * 1000); }
             // closeAllEditors();
 
@@ -176,8 +176,8 @@ const editorHandlers = {
 //      if loading was cancelled. Register a loader from any service .js file:
 //
 //          (function () {
-//              window.loadHandlers = window.loadHandlers || [];
-//              window.loadHandlers.push({
+//              window.CList.loaders = window.CList.loaders || [];
+//              window.CList.loaders.push({
 //                  label: 'My Source',
 //                  icon:  'source',
 //                  load:  async () => { return { type, value }; }
@@ -185,7 +185,7 @@ const editorHandlers = {
 //          })();
 //
 
-window.loadHandlers = window.loadHandlers || [];
+window.CList.loaders = window.CList.loaders || [];
 
 // Open the right-pane load list
 async function playLoad() {
@@ -264,9 +264,9 @@ function populateLoadOptions() {
 
 // Register built-in load handlers
 (function () {
-    window.loadHandlers = window.loadHandlers || [];
+    window.CList.loaders = window.CList.loaders || [];
 
-    window.loadHandlers.push({
+    window.CList.loaders.push({
         label: 'Load blank',
         icon:  'note_add',
         load:  async () => {
@@ -276,7 +276,7 @@ function populateLoadOptions() {
         }
     });
 
-    window.loadHandlers.push({
+    window.CList.loaders.push({
         label: 'Load template',
         icon:  'folder_open',
         load:  async () => {
@@ -324,12 +324,12 @@ function _populateBuiltInEditors(carriedContent) {
 // Asynchronously populate account-based editor buttons (may fetch accounts).
 async function _populateAccountEditors(carriedContent) {
     if (typeof isRegistered === 'function' && isRegistered()) {
-        if (!Array.isArray(accounts) || accounts.length === 0) {
-            try { accounts = await getAccounts(flaskSiteUrl); } catch(e) { showStatusMessage('Could not load accounts: ' + e.message); }
+        if (!Array.isArray(window.CList.accounts) || window.CList.accounts.length === 0) {
+            try { window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl); } catch(e) { showStatusMessage('Could not load accounts: ' + e.message); }
         }
     }
     const accountList = document.getElementById('editor-switch-account-options');
-    (accounts || []).forEach(account => {
+    (window.CList.accounts || []).forEach(account => {
         const parsedValue = parseAccountValue(account);
         if (!parsedValue || !parsedValue.permissions.includes('e')) return;
         const editorType = parsedValue.type?.toLowerCase();
@@ -447,12 +447,12 @@ async function populateEditorAccountList(content) {
     // Account-backed editors: accounts with permission 'e' whose type maps to a registered handler
     const accountList = document.getElementById('more-write-load-options');
     if (typeof isRegistered === 'function' && isRegistered()) {
-        if (!Array.isArray(accounts) || accounts.length === 0) {
-            try { accounts = await getAccounts(flaskSiteUrl); } catch(e) { showStatusMessage('Error getting Editor accounts: ' + e.message); }
+        if (!Array.isArray(window.CList.accounts) || window.CList.accounts.length === 0) {
+            try { window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl); } catch(e) { showStatusMessage('Error getting Editor accounts: ' + e.message); }
         }
     }
 
-    (accounts || []).forEach(account => {
+    (window.CList.accounts || []).forEach(account => {
         const parsedValue = parseAccountValue(account);
         if (!parsedValue || !parsedValue.permissions.includes('e')) return;
 

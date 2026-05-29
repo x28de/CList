@@ -9,8 +9,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['OPML'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['OPML'] = {
     type: 'OPML',
     instanceFromKey: true,
     kvKey: { label: 'OPML URL', placeholder: 'https://example.com/feeds.opml' },
@@ -32,8 +32,8 @@ const audioFiles = [];
 // Display is delegated to the RSS reader pipeline; feedFunctions mirror RSS.
 
 (function () {
-    window.readerHandlers = window.readerHandlers || {};
-    window.readerHandlers['OPML'] = {
+    window.CList.readers = window.CList.readers || {};
+    window.CList.readers['OPML'] = {
         name: 'OPML',
         display: 'OPML',
         icon: 'rss_feed',

@@ -11,11 +11,11 @@
 
 // ---- Account schemas ----
 
-window.accountSchemas = window.accountSchemas || {};
+window.CList.schemas = window.CList.schemas || {};
 
 // OPML2JSON: the proxy service used to fetch RSS/OPML feeds server-side.
 // Key = service URL. One entry overrides the default; omitting it uses the built-in default.
-window.accountSchemas['OPML2JSON'] = {
+window.CList.schemas['OPML2JSON'] = {
     type: 'OPML2JSON',
     instanceFromKey: true,
     kvKey: { label: 'Service URL', placeholder: 'https://opml2json.downes.ca' },
@@ -25,7 +25,7 @@ window.accountSchemas['OPML2JSON'] = {
     ]
 };
 
-window.accountSchemas['RSS'] = {
+window.CList.schemas['RSS'] = {
     type: 'RSS',
     instanceFromKey: true,
     kvKey: { label: 'Collection Name', placeholder: 'My News' },
@@ -38,8 +38,8 @@ window.accountSchemas['RSS'] = {
 // ---- Reader handler ----
 
 (function () {
-    window.readerHandlers = window.readerHandlers || {};
-    window.readerHandlers['RSS'] = {
+    window.CList.readers = window.CList.readers || {};
+    window.CList.readers['RSS'] = {
         name: 'RSS', display: 'RSS', icon: 'rss_feed',
         description: 'Read RSS feed collections',
         type: 'feed',
@@ -101,9 +101,9 @@ const RSS_RETENTION = 30 * 86400; // seconds
 // Check accounts for an OPML2JSON entry, fall back to built-in default.
 async function getOpml2jsonUrl() {
     try {
-        const accts = (Array.isArray(window.accounts) && window.accounts.length)
-            ? window.accounts
-            : await getAccounts(flaskSiteUrl);
+        const accts = (Array.isArray(window.CList.accounts) && window.CList.accounts.length)
+            ? window.CList.accounts
+            : await getAccounts(window.CList.config.flaskSiteUrl);
         const found = accts.find(a => {
             const d = parseAccountValue(a);
             return d && d.type === 'OPML2JSON';
@@ -301,13 +301,13 @@ window.sanitizeHtml = _rssSanitizeHtml;
 async function _rssFetchFeed(feedUrl, collectionKey, serviceUrl) {
     try {
         const token = (typeof getSiteSpecificCookie === 'function')
-            ? getSiteSpecificCookie(flaskSiteUrl, 'access_token') || ''
+            ? getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
             : '';
         const headers = {};
         // Auth headers only needed for the hosted opml2json service, not localhost
         if (token && serviceUrl && !serviceUrl.startsWith('http://localhost')) {
             headers['Authorization']  = `Bearer ${token}`;
-            headers['X-Kvstore-Url'] = flaskSiteUrl;
+            headers['X-Kvstore-Url'] = window.CList.config.flaskSiteUrl;
         }
         const resp = await fetch(
             `${serviceUrl}/fetch_feed?url=${encodeURIComponent(feedUrl)}`,

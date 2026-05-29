@@ -19,12 +19,12 @@
         }
     };
     // Ensure readerHandlers exists
-    if (typeof window.readerHandlers === 'undefined') {
-    window.readerHandlers = {}; // Create it if it doesn't exist
+    if (typeof window.CList.readers === 'undefined') {
+    window.CList.readers = {}; // Create it if it doesn't exist
     }
 
     // Add the handler
-    window.readerHandlers['google'] = googHandler;
+    window.CList.readers['google'] = googHandler;
  })();
 
 
@@ -39,10 +39,10 @@ async function googleSearch(query,type,start) {
         // Get generater from accounts
     // Assumes 'accounts' array has been preloaded
     // If necessary, fetch the accounts from the KVstore
-    if (accounts.length === 0) {
+    if (window.CList.accounts.length === 0) {
         try {
             // Fetch the accounts from the KVstore
-            accounts = await getAccounts(flaskSiteUrl); 
+            window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
 
         } catch (error) {
             showStatusMessage('Error getting accounts: ' + error.message);

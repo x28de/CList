@@ -9,8 +9,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['Etherpad'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['Etherpad'] = {
     type: 'Etherpad',
     instanceFromKey: true,
     kvKey: { label: 'Etherpad API URL', placeholder: 'https://etherpad.example.com/api/1.2.15' },
@@ -157,7 +157,7 @@ async function callEtherpadApi(endpoint, params) {
     // as obtained from the accounts array
 
     // Assuming 'accounts' is your array of account objects.
-    const accounts = await getAccounts(flaskSiteUrl);
+    const accounts = await getAccounts(window.CList.config.flaskSiteUrl);
     console.log(accounts);
     const etherpadAccountObj = accounts.find(account => {
         // Parse the JSON string stored in the 'value' property.
@@ -257,7 +257,7 @@ async function initializeEtherpad() {
 
 
         // Step 1: Get or create the author ID
-        etherpadUsername = getSiteSpecificCookie(flaskSiteUrl, 'username');
+        etherpadUsername = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
         if (!etherpadUsername) { etherpadUsername = 'user' + Math.floor(Math.random() * 1000); }
         authorID = await getAuthorId(etherpadUsername);
         console.log('Author ID:', authorID);

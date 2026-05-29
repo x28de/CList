@@ -9,8 +9,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['Blogger'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['Blogger'] = {
     type: 'Blogger',
     instanceFromKey: true,
     kvKey: { label: 'Blog ID', placeholder: '1234567890' },
@@ -22,8 +22,8 @@ window.accountSchemas['Blogger'] = {
 };
 
 (function () {
-    window.publishHandlers = window.publishHandlers || {};
-    window.publishHandlers['Blogger'] = {
+    window.CList.publishers = window.CList.publishers || {};
+    window.CList.publishers['Blogger'] = {
         publish: async (accountData, title, content) => {
             const responseDiv = document.getElementById('post-result');
             const plainTitle = removeHtml(title).trim()

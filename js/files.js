@@ -231,8 +231,8 @@ function packageStatus(charlimit, input, publishedURL) {
 
 
 (function () {
-    window.loadHandlers = window.loadHandlers || [];
-    window.loadHandlers.push({
+    window.CList.loaders = window.CList.loaders || [];
+    window.CList.loaders.push({
         label: 'Load from file',
         icon:  'upload_file',
         load:  async () => await loadFile()
@@ -240,8 +240,8 @@ function packageStatus(charlimit, input, publishedURL) {
 })();
 
 (function () {
-    window.saveHandlers = window.saveHandlers || [];
-    window.saveHandlers.push({
+    window.CList.savers = window.CList.savers || [];
+    window.CList.savers.push({
         label: 'Save to local file',
         icon:  'save',
         save:  async () => await saveContent()

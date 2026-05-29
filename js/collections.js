@@ -3,7 +3,7 @@ console.log('[collections] collections.js loading');
 // Depends on: utilities.js (escapeHtml, getSiteSpecificCookie, showStatusMessage),
 //             kvstore.js (getEncKey), crypto_utils.js (encryptWithKey, decryptWithKey),
 //             editors.js (currentEditor), tinymce.js (displayReferences)
-// flaskSiteUrl is a global set in index.html
+// window.CList.config.flaskSiteUrl is a global set in index.html
 
 // ── Collections ──────────────────────────────────────────────────────────────
 // Items are saved directly to kvstore under keys collection:<name>.
@@ -27,7 +27,7 @@ async function _showCollectionPicker(itemId, opts = {}) {
     document.querySelectorAll('.' + PICKER_CLASS).forEach(el => el.remove());
     if (existing) return;
 
-    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
     if (!token) { showStatusMessage('Please log in to save to a collection.'); return; }
 
     const specificEl = document.getElementById(itemId);
@@ -51,10 +51,10 @@ async function _showCollectionPicker(itemId, opts = {}) {
     setTimeout(() => document.addEventListener('click', outsideHandler, true), 0);
 
     try {
-        const encKey = await getEncKey(flaskSiteUrl);
+        const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
         if (!encKey) throw new Error('Encryption key not available — please log in again.');
 
-        const resp = await fetch(`${flaskSiteUrl}/get_kvs/`, {
+        const resp = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`, {
             headers: { 'Authorization': `Bearer ${token}` },
         });
         if (!resp.ok) throw new Error(`kvstore error ${resp.status}`);
@@ -145,11 +145,11 @@ async function _addItemToCollection(itemId, collectionName, encValue, token, enc
         const encrypted = await encryptWithKey(encKey, JSON.stringify(items));
         const kvPayload = { key: `collection:${collectionName}`, value: encrypted };
         const kvHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-        let saveResp = await fetch(`${flaskSiteUrl}/add_kv/`, {
+        let saveResp = await fetch(`${window.CList.config.flaskSiteUrl}/add_kv/`, {
             method: 'POST', headers: kvHeaders, body: JSON.stringify(kvPayload),
         });
         if (saveResp.status === 409) {
-            saveResp = await fetch(`${flaskSiteUrl}/update_kv/`, {
+            saveResp = await fetch(`${window.CList.config.flaskSiteUrl}/update_kv/`, {
                 method: 'POST', headers: kvHeaders, body: JSON.stringify(kvPayload),
             });
         }
@@ -220,7 +220,7 @@ async function _removeItemFromCollection(col, itemUrl, token, encKey, countSpan,
     try {
         col.items = col.items.filter(i => i.url !== itemUrl);
         const encrypted = await encryptWithKey(encKey, JSON.stringify(col.items));
-        const resp = await fetch(`${flaskSiteUrl}/update_kv/`, {
+        const resp = await fetch(`${window.CList.config.flaskSiteUrl}/update_kv/`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body:    JSON.stringify({ key: col.key, value: encrypted }),
@@ -383,20 +383,20 @@ window.showSavedCollections = async function() {
     if (feedMenu)  { feedMenu.style.display = '';  feedMenu.innerHTML = ''; }
     feedContainer.innerHTML = '<p class="feed-status-message">Loading collections…</p>';
 
-    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
     if (!token) {
         feedContainer.innerHTML = '<p class="feed-status-message">Please log in to view your collections.</p>';
         return;
     }
 
     try {
-        const resp = await fetch(`${flaskSiteUrl}/get_kvs/`, {
+        const resp = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`, {
             headers: { 'Authorization': `Bearer ${token}` },
         });
         if (!resp.ok) throw new Error(`kvstore error ${resp.status}`);
         const kvs = await resp.json();
 
-        const encKey = await getEncKey(flaskSiteUrl);
+        const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
         if (!encKey) throw new Error('Encryption key not available — please log in again.');
 
         const collections = [];
@@ -464,7 +464,7 @@ window.showSavedCollections = async function() {
             yesBtn.textContent = 'Delete';
             yesBtn.onclick     = async () => {
                 try {
-                    const delResp = await fetch(`${flaskSiteUrl}/delete_kv/`, {
+                    const delResp = await fetch(`${window.CList.config.flaskSiteUrl}/delete_kv/`, {
                         method:  'POST',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body:    JSON.stringify({ key: col.key }),

@@ -13,8 +13,8 @@
 // DOM references used by login-state functions defined outside DOMContentLoaded.
 let identityDiv, loginButton, logoutButton, accountButton;
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['Proxyp'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['Proxyp'] = {
     type: 'Proxyp',
     instanceFromKey: true,
     kvKey: { label: 'Proxy URL', placeholder: 'https://proxyp.mooc.ca' },
@@ -34,7 +34,7 @@ window.accountSchemas['Proxyp'] = {
 //  accountDropdown  (a select element)
 // Expects the following variables:
 //  username
-//  flaskSiteUrl
+//  window.CList.config.flaskSiteUrl
 //  accounts
 //  accessCode
 //  baseURL
@@ -42,25 +42,8 @@ window.accountSchemas['Proxyp'] = {
 
 document.addEventListener('DOMContentLoaded', function() {
 
-    // Perform checks for varuiable definitions in HTML file
-    if (typeof username === 'undefined') {
-        throw new Error('Error: Username is not defined.');
-    }
-
-    if (typeof flaskSiteUrl === 'undefined' || !flaskSiteUrl) {
-        throw new Error('Error: Flask Site URL is not defined or has no value.');
-    }
-
-    if (!Array.isArray(accounts)) {
-        throw new Error('Error: Accounts is not an array.');
-    }
-
-    if (typeof accessCode === 'undefined') {
-        throw new Error('Error: accessCode is not defined.');
-    }
-
-    if (typeof baseURL === 'undefined') {
-        throw new Error('Error: Username is not defined.');
+    if (!window.CList?.config?.flaskSiteUrl) {
+        throw new Error('Error: CList namespace not initialized.');
     }
 
 
@@ -87,20 +70,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check for access token + session encryption key.
     // encKey is in sessionStorage (cleared on tab close) — if missing, user must log in again
     // to re-derive the key even if the token cookie is still valid.
-    const _token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+    const _token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
     if (!_token) {
         loginRequired("No login cookie found.");
     } else if (isTokenExpired(_token)) {
         loginRequired("Token expired.");
-    } else if (!sessionStorage.getItem(`${flaskSiteUrl}_${getSiteSpecificCookie(flaskSiteUrl, 'username')}_encKey`)) {
+    } else if (!sessionStorage.getItem(`${window.CList.config.flaskSiteUrl}_${getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username')}_encKey`)) {
         loginRequired("Session key cleared. Please log in again.");
     } else {
         loginNotRequired();
         // Fetch accounts on reload so Read/Post buttons reflect the user's saved accounts.
         // (accounts array is empty at page load; it's normally populated only after login)
-        getAccounts(flaskSiteUrl).then(accts => {
+        getAccounts(window.CList.config.flaskSiteUrl).then(accts => {
             if (accts) {
-                accounts = accts;
+                window.CList.accounts = accts;
                 if (typeof populateReadAccountList === 'function') populateReadAccountList(accts);
                 if (typeof populatePostOptions    === 'function') populatePostOptions(accts);
                 updateUIVisibility();
@@ -109,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
-    if (!username || username === "none") {
+    if (!window.CList.state.username || window.CList.state.username === "none") {
         loginRequired("No username found.");
     }
 
@@ -124,20 +107,20 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── Auth-state helpers ────────────────────────────────────────────────────────
 
 function isRegistered() {
-    return !!(username && username !== 'none' && username !== '');
+    return !!(window.CList.state.username && window.CList.state.username !== 'none' && window.CList.state.username !== '');
 }
 
 function hasReadAccount() {
-    return isRegistered() && (accounts || []).some(a => {
+    return isRegistered() && (window.CList.accounts || []).some(a => {
         const v = parseAccountValue(a);
-        return v && v.type && window.readerHandlers &&
-               window.readerHandlers[v.type] &&
-               window.readerHandlers[v.type].feedFunctions;
+        return v && v.type && window.CList.readers &&
+               window.CList.readers[v.type] &&
+               window.CList.readers[v.type].feedFunctions;
     });
 }
 
 function hasPostAccount() {
-    return isRegistered() && (accounts || []).some(a => {
+    return isRegistered() && (window.CList.accounts || []).some(a => {
         const v = parseAccountValue(a);
         return v && v.permissions &&
                (v.permissions.includes('w') || v.permissions.includes('p'));
@@ -145,7 +128,7 @@ function hasPostAccount() {
 }
 
 function hasAIAccount() {
-    return isRegistered() && (accounts || []).some(a => {
+    return isRegistered() && (window.CList.accounts || []).some(a => {
         const v = parseAccountValue(a);
         return v && v.type === 'AI';
     });
@@ -168,7 +151,7 @@ function updateUIVisibility() {
 
 // Login is required
 function loginRequired(msg) {
-    username = 'none';
+    window.CList.state.username = 'none';
     openLeftPane();
     loginButton.style.display="inline-block";
     const registerButton = document.getElementById("registerButton");
@@ -191,8 +174,8 @@ function loginNotRequired() {
     loginButton.style.display="none";
     const registerButton = document.getElementById("registerButton");
     if (registerButton) registerButton.style.display="none";
-    username = getSiteSpecificCookie(flaskSiteUrl, 'username');
-    identityDiv.innerHTML = `Identity: ${username}`;
+    window.CList.state.username = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+    identityDiv.innerHTML = `Identity: ${window.CList.state.username}`;
     updateUIVisibility();
 }
 
@@ -301,7 +284,7 @@ window.addEventListener('popstate', (e) => {
             }
 
             // Find the selected account
-            const selectedAccount = accounts.find(account => account.key === selectedKey);
+            const selectedAccount = window.CList.accounts.find(account => account.key === selectedKey);
             if (selectedAccount) {
            
                 // Parse the JSON string in the value field
@@ -346,7 +329,7 @@ window.addEventListener('popstate', (e) => {
             document.getElementById('authPassword').value  = '';
             document.getElementById('authConfirm').value   = '';
             document.getElementById('authError').style.display = 'none';
-            document.getElementById('authServerUrl').textContent = new URL(flaskSiteUrl).hostname;
+            document.getElementById('authServerUrl').textContent = new URL(window.CList.config.flaskSiteUrl).hostname;
             document.getElementById('authMainForm').style.display = 'block';
             document.getElementById('authServerLine').style.display = 'block';
             document.getElementById('changeServerPanel').style.display = 'none';
@@ -362,7 +345,7 @@ window.addEventListener('popstate', (e) => {
             document.getElementById('changeServerPanel').style.display = 'block';
             document.getElementById('authModalTitle').textContent = 'Change Account Server';
             const sel = document.getElementById('serverSelect');
-            sel.value = flaskSiteUrl;
+            sel.value = window.CList.config.flaskSiteUrl;
             if (!sel.value) sel.selectedIndex = 0;
         }
 
@@ -376,7 +359,7 @@ window.addEventListener('popstate', (e) => {
 
         function selectAccountServer() {
             const url = document.getElementById('serverSelect').value;
-            flaskSiteUrl = url;
+            window.CList.config.flaskSiteUrl = url;
             localStorage.setItem('clist_kvstore_url', url);
             document.getElementById('authServerUrl').textContent = new URL(url).hostname;
             closeChangeServerPanel();
@@ -415,14 +398,14 @@ window.addEventListener('popstate', (e) => {
                 closeAuthModal();
                 updateIdentityDiv();
                 acceptLogin();
-                accounts = await getAccounts(flaskSiteUrl);
+                window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
                 if (mode === 'register') autoRegisterCollab().catch(e => console.warn('Collab auto-registration failed:', e));
                 if (mode === 'register') autoRegisterAnnotations().catch(e => console.warn('Annotations auto-registration failed:', e));
                 autoSeedRSSRelay().catch(e => console.warn('RSS Relay account seed failed:', e));
-                if (accounts) {
+                if (window.CList.accounts) {
                     updateUIVisibility();
                     await playRead();
-                    populateReadAccountList(accounts);
+                    populateReadAccountList(window.CList.accounts);
                 }
                 if (mode === 'register') showOnboardingNudge();
             } catch (e) {
@@ -452,24 +435,24 @@ window.addEventListener('popstate', (e) => {
         }
 
         // Function to handle logout
-        function KVlogout(flaskSiteUrl) {
+        function KVlogout() {
 
             // Remove the token cookies and session encryption key
-            const _logoutUser = getSiteSpecificCookie(flaskSiteUrl, 'username');
-            deleteSiteSpecificCookie(flaskSiteUrl,'access_token');
-            deleteSiteSpecificCookie(flaskSiteUrl,'username');
-            deleteSiteSpecificCookie(flaskSiteUrl,'token_expires');
-            if (_logoutUser) sessionStorage.removeItem(`${flaskSiteUrl}_${_logoutUser}_encKey`);
-            sessionStorage.removeItem(flaskSiteUrl + '_encKey'); // clean up any legacy key
+            const _logoutUser = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+            deleteSiteSpecificCookie(window.CList.config.flaskSiteUrl,'access_token');
+            deleteSiteSpecificCookie(window.CList.config.flaskSiteUrl,'username');
+            deleteSiteSpecificCookie(window.CList.config.flaskSiteUrl,'token_expires');
+            if (_logoutUser) sessionStorage.removeItem(`${window.CList.config.flaskSiteUrl}_${_logoutUser}_encKey`);
+            sessionStorage.removeItem(window.CList.config.flaskSiteUrl + '_encKey'); // clean up any legacy key
 
 
             // Clear the account list
             const element = document.getElementById('read-account-list');
             if (element) element.style.display = 'none';
             if (element) element.value='';
-            accounts.splice(0, accounts.length);    // Clear the accounts array
+            window.CList.accounts = [];
 
-            username = '';  // Clear the username
+            window.CList.state.username = '';  // Clear the username
             // Clear the baseURL and accessToken input fields and selected option in the dropdown
             document.getElementById('baseURL').value = '';
             document.getElementById('accessToken').value = '';
@@ -492,7 +475,7 @@ window.addEventListener('popstate', (e) => {
         function displayUsername() {
             const usernameDisplay = document.getElementById('username-display');
             if (usernameDisplay) {
-                usernameDisplay.textContent = (username && username !== 'none') ? `Logged in as ${username}!` : 'Welcome, guest!';
+                usernameDisplay.textContent = (window.CList.state.username && window.CList.state.username !== 'none') ? `Logged in as ${window.CList.state.username}!` : 'Welcome, guest!';
             }
         }
 
@@ -502,32 +485,32 @@ window.addEventListener('popstate', (e) => {
         function isTokenExpired(token) {
             // Token is now an opaque string, not a JWT — check the stored expiry cookie.
             if (!token) return true;
-            const expires = getSiteSpecificCookie(flaskSiteUrl, 'token_expires');
+            const expires = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'token_expires');
             if (!expires) return true;
             const expired = new Date(expires) < new Date();
             if (expired) console.log("access token expired");
             return expired;
         }
 
-        async function getAccounts(flaskSiteUrl, retryCount = 3, retryDelay = 500) {
+        async function getAccounts(siteUrl = window.CList.config.flaskSiteUrl, retryCount = 3, retryDelay = 500) {
 
             // Set up debugging for this crucial function
             const stack = new Error().stack;
             const callerFunction = stack.split("\n")[2]?.trim(); // Get the caller function name
         
-            console.log(`getAccounts() called using ${flaskSiteUrl}`);
+            console.log(`getAccounts() called using ${window.CList.config.flaskSiteUrl}`);
             console.log(`Called by: ${callerFunction}`);
 
-            let username = getSiteSpecificCookie(flaskSiteUrl, 'username');
-            let token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+            let username = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+            let token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
 
                 // Retry logic: If username is not set, wait and retry
             let attempt = 0;
             while ((!username || username === "none" || !token) && attempt < retryCount) {
                 console.warn(`No username found in cookies. Retrying in ${retryDelay}ms... (${attempt + 1}/${retryCount})`);
                 await new Promise(resolve => setTimeout(resolve, retryDelay));
-                username = getSiteSpecificCookie(flaskSiteUrl, 'username');
-                token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+                username = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+                token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
                 attempt++;
             }
 
@@ -545,7 +528,7 @@ window.addEventListener('popstate', (e) => {
 
             console.log('Tring using access token ' + token);
             try {
-                const response = await fetch(`${flaskSiteUrl}/get_kvs/`, {
+                const response = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`, {
                     method: 'GET',
                     headers: {
                         'Authorization': 'Bearer ' + token
@@ -559,7 +542,7 @@ window.addEventListener('popstate', (e) => {
                 const data = await response.json();
 
                 // Load encKey from sessionStorage once, before decrypting all values
-                const encKey = await getEncKey(flaskSiteUrl);
+                const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
                 if (!encKey) {
                     loginRequired('Encryption key not found. Please log in again.');
                     return;
@@ -630,17 +613,17 @@ window.addEventListener('popstate', (e) => {
         window.addEventListener('storage', (event) => {
             if (event.key === 'kvstore') {
                 console.log('Detected change in kvstore:', event.newValue);
-                console.log('Getting accounts from KVStore...' + flaskSiteUrl);
+                console.log('Getting accounts from KVStore...' + window.CList.config.flaskSiteUrl);
                              
                 // Introduce a small delay to allow cookies to be set before calling getAccounts
                 setTimeout(async () => {
                     try {
                         console.log('Delaying getAccounts() call to ensure cookies are set...');
-                        accounts = await getAccounts(flaskSiteUrl);
-                        console.log('Accounts:', accounts);
+                        window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
+                        console.log('Accounts:', window.CList.accounts);
                         await playRead();
                         console.log('PlayRead() run');
-                        populateReadAccountList(accounts);
+                        populateReadAccountList(window.CList.accounts);
                         
                         updateIdentityDiv(); // Update the div when kvstore changes
                         acceptLogin();
@@ -655,9 +638,9 @@ window.addEventListener('popstate', (e) => {
 
         // Function to fetch cookies and update the div
         function updateIdentityDiv() {
-            username = getSiteSpecificCookie(flaskSiteUrl, 'username');
-            if (username) {
-                identityDiv.innerHTML = `Identity: ${username}`;
+            window.CList.state.username = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+            if (window.CList.state.username) {
+                identityDiv.innerHTML = `Identity: ${window.CList.state.username}`;
             } else {
                 console.warn('No login data found in cookies.');
             }
@@ -665,9 +648,9 @@ window.addEventListener('popstate', (e) => {
 
         // Function to fetch cookies and update the div
         function acceptLogin() {
-            username = getSiteSpecificCookie(flaskSiteUrl, 'username');
-            const access_token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
-            if (username && access_token) {
+            window.CList.state.username = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+            const access_token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+            if (window.CList.state.username && access_token) {
                loginButton.style.display="none";
                const registerButton = document.getElementById("registerButton");
                if (registerButton) registerButton.style.display="none";
@@ -682,7 +665,7 @@ window.addEventListener('popstate', (e) => {
         async function autoRegisterCollab() {
             const COLLAB_DEFAULT = 'wss://collab.mooc.ca';
             const base = 'https://collab.mooc.ca';
-            const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
             if (!token) return;
 
             const resp = await fetch(`${base}/api/register`, {
@@ -692,18 +675,18 @@ window.addEventListener('popstate', (e) => {
             if (!resp.ok) throw new Error(`Collab registration failed (${resp.status})`);
 
             // Don't add a duplicate account entry
-            const existing = (accounts || []).find(a => {
+            const existing = (window.CList.accounts || []).find(a => {
                 const v = parseAccountValue(a);
                 return v && v.type === 'Collab' && v.instance === COLLAB_DEFAULT;
             });
             if (existing) return;
 
-            const encKey = await getEncKey(flaskSiteUrl);
+            const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
             if (!encKey) throw new Error('Encryption key not available');
             const instanceData = { type: 'Collab', instance: COLLAB_DEFAULT, title: 'collab.mooc.ca', permissions: 'e' };
             const encryptedValue = await encryptWithKey(encKey, JSON.stringify(instanceData));
 
-            const saveResp = await fetch(`${flaskSiteUrl}/add_kv/`, {
+            const saveResp = await fetch(`${window.CList.config.flaskSiteUrl}/add_kv/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ key: COLLAB_DEFAULT, value: encryptedValue })
@@ -714,10 +697,10 @@ window.addEventListener('popstate', (e) => {
         // Silently register the current user on the matching annotations server and save
         // an Annotate account to kvstore if one doesn't already exist.
         async function autoRegisterAnnotations() {
-            const kvMatch = (flaskSiteUrl || '').match(/^https?:\/\/kvstore\.(.+)/);
+            const kvMatch = (window.CList.config.flaskSiteUrl || '').match(/^https?:\/\/kvstore\.(.+)/);
             if (!kvMatch) return;
             const annoUrl = `https://annotations.${kvMatch[1]}`;
-            const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
             if (!token) return;
 
             const resp = await fetch(`${annoUrl}/api/register`, {
@@ -727,18 +710,18 @@ window.addEventListener('popstate', (e) => {
             if (!resp.ok) throw new Error(`Annotations registration failed (${resp.status})`);
 
             // Don't add a duplicate account entry
-            const existing = (accounts || []).find(a => {
+            const existing = (window.CList.accounts || []).find(a => {
                 const v = parseAccountValue(a);
                 return v && v.type === 'Annotate' && v.instance === annoUrl;
             });
             if (existing) return;
 
-            const encKey = await getEncKey(flaskSiteUrl);
+            const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
             if (!encKey) throw new Error('Encryption key not available');
             const instanceData = { type: 'Annotate', instance: annoUrl, title: annoUrl.replace('https://', ''), permissions: 'rw' };
             const encryptedValue = await encryptWithKey(encKey, JSON.stringify(instanceData));
 
-            const saveResp = await fetch(`${flaskSiteUrl}/add_kv/`, {
+            const saveResp = await fetch(`${window.CList.config.flaskSiteUrl}/add_kv/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ key: annoUrl, value: encryptedValue })
@@ -746,29 +729,29 @@ window.addEventListener('popstate', (e) => {
             if (!saveResp.ok) throw new Error('Annotations account save failed: ' + saveResp.status);
 
             // Refresh accounts and update UI so the Post button appears immediately
-            accounts = await getAccounts(flaskSiteUrl);
+            window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
             updateUIVisibility();
-            if (typeof populatePostOptions === 'function') populatePostOptions(accounts);
+            if (typeof populatePostOptions === 'function') populatePostOptions(window.CList.accounts);
         }
 
         // Silently save a default RSS Relay (OPML2JSON) service account if one doesn't exist.
         async function autoSeedRSSRelay() {
             const OPML2JSON_DEFAULT = 'https://opml2json.downes.ca';
-            const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
             if (!token) return;
 
-            const existing = (accounts || []).find(a => {
+            const existing = (window.CList.accounts || []).find(a => {
                 const v = parseAccountValue(a);
                 return v && v.type === 'OPML2JSON';
             });
             if (existing) return;
 
-            const encKey = await getEncKey(flaskSiteUrl);
+            const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
             if (!encKey) throw new Error('Encryption key not available');
             const instanceData = { type: 'OPML2JSON', instance: OPML2JSON_DEFAULT, title: 'RSS Relay', permissions: 's' };
             const encryptedValue = await encryptWithKey(encKey, JSON.stringify(instanceData));
 
-            const saveResp = await fetch(`${flaskSiteUrl}/add_kv/`, {
+            const saveResp = await fetch(`${window.CList.config.flaskSiteUrl}/add_kv/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ key: OPML2JSON_DEFAULT, value: encryptedValue })
@@ -779,9 +762,9 @@ window.addEventListener('popstate', (e) => {
         // Re-register on all saved Collab servers to push an updated DID.
         // Called from me.html after DID generation via window.parent.refreshCollabRegistrations().
         window.refreshCollabRegistrations = async function() {
-            const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
             if (!token) return;
-            const collabAccounts = (accounts || []).filter(a => {
+            const collabAccounts = (window.CList.accounts || []).filter(a => {
                 const v = parseAccountValue(a);
                 return v && v.type === 'Collab';
             });
@@ -808,7 +791,7 @@ window.addEventListener('popstate', (e) => {
 /**
  * Retrieve the session encryption key from sessionStorage.
  * Returns null if the user has not logged in this tab session.
- * @param {string} siteUrl - flaskSiteUrl, used as namespace
+ * @param {string} siteUrl - window.CList.config.flaskSiteUrl, used as namespace
  * @returns {Promise<CryptoKey|null>}
  */
 async function getEncKey(siteUrl) {
@@ -835,7 +818,7 @@ async function KVloginWithCredentials(uname, password) {
         deriveAuthHash(password, uname)
     ]);
 
-    const response = await fetch(`${flaskSiteUrl}/auth/login`, {
+    const response = await fetch(`${window.CList.config.flaskSiteUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: uname, auth_hash: authHash })
@@ -849,14 +832,14 @@ async function KVloginWithCredentials(uname, password) {
     const data = await response.json();
 
     // Store token and expiry in persistent cookies (365-day lifetime matches server)
-    setSiteSpecificCookie(flaskSiteUrl, 'access_token', data.token, 365);
-    setSiteSpecificCookie(flaskSiteUrl, 'username', data.username, 365);
-    setSiteSpecificCookie(flaskSiteUrl, 'token_expires', data.expires, 365);
+    setSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token', data.token, 365);
+    setSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username', data.username, 365);
+    setSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'token_expires', data.expires, 365);
 
     // Export encKey to raw bytes and store in sessionStorage (cleared when tab closes)
     const rawKey = await window.crypto.subtle.exportKey('raw', encKey);
     const keyB64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
-    sessionStorage.setItem(`${flaskSiteUrl}_${data.username}_encKey`, keyB64);
+    sessionStorage.setItem(`${window.CList.config.flaskSiteUrl}_${data.username}_encKey`, keyB64);
 
     return { token: data.token, username: data.username };
 }
@@ -872,7 +855,7 @@ async function KVloginWithCredentials(uname, password) {
 async function KVregisterWithCredentials(uname, password) {
     const authHash = await deriveAuthHash(password, uname.toLowerCase());
 
-    const response = await fetch(`${flaskSiteUrl}/auth/register`, {
+    const response = await fetch(`${window.CList.config.flaskSiteUrl}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: uname.toLowerCase(), auth_hash: authHash })

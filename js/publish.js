@@ -29,8 +29,8 @@
 //      Register a publisher in the relevant service .js file:
 //
 //          (function () {
-//              window.publishHandlers = window.publishHandlers || {};
-//              window.publishHandlers['ServiceType'] = {
+//              window.CList.publishers = window.CList.publishers || {};
+//              window.CList.publishers['ServiceType'] = {
 //                  publish: async (accountData, title, content) => {
 //                      // call the service API …
 //                      return publishedURL; // or null
@@ -39,7 +39,7 @@
 //          })();
 //
 
-window.publishHandlers = window.publishHandlers || {};
+window.CList.publishers = window.CList.publishers || {};
 
 //
 // Define handlers for each save destination
@@ -54,8 +54,8 @@ window.publishHandlers = window.publishHandlers || {};
 //      Register a saver from any service .js file:
 //
 //          (function () {
-//              window.saveHandlers = window.saveHandlers || [];
-//              window.saveHandlers.push({
+//              window.CList.savers = window.CList.savers || [];
+//              window.CList.savers.push({
 //                  label: 'Save to My Service',
 //                  icon:  'cloud_upload',
 //                  save:  async () => { /* save logic here */ }
@@ -63,26 +63,23 @@ window.publishHandlers = window.publishHandlers || {};
 //          })();
 //
 
-window.saveHandlers = window.saveHandlers || [];
+window.CList.savers = window.CList.savers || [];
 
 async function playPost() {
 
-    if (!Array.isArray(accounts)) {
+    if (!Array.isArray(window.CList.accounts)) {
         throw new Error('Error: Accounts array not found; maybe you need to log in.');
     }
 
-    // If neceeary, fetch the accounts from the KVstore
-    if (accounts.length === 0) {
+    if (window.CList.accounts.length === 0) {
         try {
-            // Fetch the accounts from the KVstore
-            accounts = await getAccounts(flaskSiteUrl); 
-
+            window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
         } catch (error) {
             showStatusMessage('Error getting accounts: ' + error.message);
         }
     }
 
-    populatePostOptions(accounts); // Populate UI with options to save
+    populatePostOptions(window.CList.accounts); // Populate UI with options to save
     openRightInterface('post-instructions');
 
 }
@@ -175,7 +172,7 @@ async function postAll() {
     const resultDiv = document.getElementById('post-result');
     resultDiv.innerHTML = '';
 
-    const allAccounts = await getAccounts(flaskSiteUrl);
+    const allAccounts = await getAccounts(window.CList.config.flaskSiteUrl);
 
     // Collect selected accounts with char limits, sorted highest-first so the
     // fullest version is published first and its URL is available for short-form posts

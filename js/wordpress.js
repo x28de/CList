@@ -9,8 +9,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['WordPress'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['WordPress'] = {
     type: 'WordPress',
     instanceFromKey: true,
     kvKey: { label: 'Username', placeholder: 'you@your-wordpress.site' },
@@ -22,8 +22,8 @@ window.accountSchemas['WordPress'] = {
 };
 
 (function () {
-    window.publishHandlers = window.publishHandlers || {};
-    window.publishHandlers['WordPress'] = {
+    window.CList.publishers = window.CList.publishers || {};
+    window.CList.publishers['WordPress'] = {
         publish: async (accountData, title, content) => {
             const plainTitle = removeHtml(title).trim()
                 || content.replace(/<[^>]+>/g, '').trim().substring(0, 70).replace(/\s\S*$/, '') + '…';
@@ -122,10 +122,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 });
 
 async function saveWordPressAccount(siteUrl, userLogin, password) {
-    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
     if (!token) { showStatusMessage('Please log in to kvstore before authorizing WordPress.'); return; }
 
-    const encKey = await getEncKey(flaskSiteUrl);
+    const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
     if (!encKey) { showStatusMessage('Encryption key missing — please log in again.'); return; }
 
     const host = new URL(siteUrl).host;
@@ -141,10 +141,10 @@ async function saveWordPressAccount(siteUrl, userLogin, password) {
         return;
     }
 
-    const existing = Array.isArray(accounts) && accounts.find(a => a.key === accountKey);
+    const existing = Array.isArray(window.CList.accounts) && window.CList.accounts.find(a => a.key === accountKey);
     const endpoint = existing ? 'update_kv/' : 'add_kv/';
 
-    const response = await fetch(`${flaskSiteUrl}/${endpoint}`, {
+    const response = await fetch(`${window.CList.config.flaskSiteUrl}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({ key: accountKey, value: encryptedValue }),
@@ -153,10 +153,10 @@ async function saveWordPressAccount(siteUrl, userLogin, password) {
     if (!response.ok) { showStatusMessage('Failed to save WordPress account to kvstore.'); return; }
 
     try {
-        accounts = await getAccounts(flaskSiteUrl);
-        if (accounts) {
+        window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
+        if (window.CList.accounts) {
             updateUIVisibility();
-            populatePostOptions(accounts);
+            populatePostOptions(window.CList.accounts);
         }
         showStatusMessage('WordPress account authorized and saved.');
     } catch (error) {

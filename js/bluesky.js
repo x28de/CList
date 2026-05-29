@@ -9,8 +9,8 @@
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['Bluesky'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['Bluesky'] = {
     type: 'Bluesky',
     instanceFromKey: true,
     kvKey: { label: 'Username', placeholder: 'you.bsky.social' },
@@ -43,15 +43,15 @@ let _bskyPds   = null;
             'Search':        () => openLeftInterface(blueskySearchForm()),
         }
     };
-    if (typeof window.readerHandlers === 'undefined') {
-        window.readerHandlers = {};
+    if (typeof window.CList.readers === 'undefined') {
+        window.CList.readers = {};
     }
-    window.readerHandlers['Bluesky'] = blueskyHandler;
+    window.CList.readers['Bluesky'] = blueskyHandler;
 })();
 
 (function () {
-    window.publishHandlers = window.publishHandlers || {};
-    window.publishHandlers['Bluesky'] = {
+    window.CList.publishers = window.CList.publishers || {};
+    window.CList.publishers['Bluesky'] = {
         publish: async (_accountData, _title, content) => {
             await submitBlueskyPost(content, 'post-result', null, null, null, null, null);
             return null;
@@ -90,15 +90,15 @@ async function createBlueskySession() {
         return { accessToken: _bskyToken, did: _bskyDid, pds: _bskyPds };
     }
 
-    if (accounts.length === 0) {
+    if (window.CList.accounts.length === 0) {
         try {
-            accounts = await getAccounts(flaskSiteUrl);
+            window.CList.accounts = await getAccounts(window.CList.config.flaskSiteUrl);
         } catch (error) {
             throw new Error('Could not load accounts: ' + error.message);
         }
     }
 
-    accounts.forEach(account => {
+    window.CList.accounts.forEach(account => {
         const parsedValue = parseAccountValue(account);
         if (!parsedValue) return;
         if (parsedValue.type === 'Bluesky') {

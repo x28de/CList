@@ -8,8 +8,8 @@
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
 // Account schema — lets users configure a custom collab server via kvstore
-window.accountSchemas = window.accountSchemas || {}
-window.accountSchemas['Collab'] = {
+window.CList.schemas = window.CList.schemas || {}
+window.CList.schemas['Collab'] = {
     type: 'Collab',
     instanceFromKey: true,
     kvKey: { label: 'WebSocket URL', placeholder: 'wss://collab.mooc.ca' },
@@ -126,9 +126,9 @@ window.accountSchemas['Collab'] = {
 
     async function getCollabWsUrl() {
         try {
-            const accts = (Array.isArray(accounts) && accounts.length)
-                ? accounts
-                : await getAccounts(flaskSiteUrl)
+            const accts = (Array.isArray(window.CList.accounts) && window.CList.accounts.length)
+                ? window.CList.accounts
+                : await getAccounts(window.CList.config.flaskSiteUrl)
             const found = accts.find(a => {
                 const d = parseAccountValue(a)
                 return d && d.type === 'Collab'
@@ -216,8 +216,8 @@ window.accountSchemas['Collab'] = {
         if (localName.includes('/')) return localName  // already namespaced
         const didKey = await getUserDidKey()
         if (didKey) return `${didKey}/${localName}`
-        const myUser = (window.username && window.username !== 'none' && window.username !== '') ? window.username : null
-        const shortHost = kvShortHost(flaskSiteUrl)
+        const myUser = (window.CList.state.username && window.CList.state.username !== 'none' && window.CList.state.username !== '') ? window.CList.state.username : null
+        const shortHost = kvShortHost(window.CList.config.flaskSiteUrl)
         if (myUser && shortHost) return `${myUser}@${shortHost}/${localName}`
         return localName
     }
@@ -226,10 +226,10 @@ window.accountSchemas['Collab'] = {
     // Returns the did:key string, or null if unavailable.  Result is cached.
     async function getUserDidKey() {
         if (cachedDidKey) return cachedDidKey
-        const myUser = (window.username && window.username !== 'none' && window.username !== '') ? window.username : null
+        const myUser = (window.CList.state.username && window.CList.state.username !== 'none' && window.CList.state.username !== '') ? window.CList.state.username : null
         if (!myUser) return null
         try {
-            const res = await fetch(`${flaskSiteUrl}/users/${myUser}/did.json`)
+            const res = await fetch(`${window.CList.config.flaskSiteUrl}/users/${myUser}/did.json`)
             if (!res.ok) return null
             const doc = await res.json()
             const didKey = (Array.isArray(doc.alsoKnownAs) ? doc.alsoKnownAs : [])
@@ -298,7 +298,7 @@ window.accountSchemas['Collab'] = {
 
         const wsUrl = await getCollabWsUrl()
         const base  = wsUrlToRestBase(wsUrl)
-        const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || ''
+        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
         try {
             const pathId = docId.split('/').map(encodeURIComponent).join('/')
             const resp = await fetch(`${base}/api/documents/${pathId}`, {
@@ -497,7 +497,7 @@ window.accountSchemas['Collab'] = {
         if (!currentDocId) { showStatusMessage('Join a document first before sharing.'); return }
 
         const base     = wsUrlToRestBase(currentWsUrl)
-        const token    = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || ''
+        const token    = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
         const docTitle = currentDocTitle || currentDocId
 
         let allowAnon = false
@@ -585,10 +585,10 @@ window.accountSchemas['Collab'] = {
         if (hocuspocusProvider) { hocuspocusProvider.destroy(); hocuspocusProvider = null }
         if (tiptapEditor)       { tiptapEditor.destroy();       tiptapEditor = null }
 
-        const rawToken = getSiteSpecificCookie(flaskSiteUrl, 'access_token')
+        const rawToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token')
         const token    = (mode === 'read' && !rawToken) ? 'anonymous' : (rawToken || 'anonymous')
-        const userName = (window.username && window.username !== 'none' && window.username !== '')
-            ? window.username
+        const userName = (window.CList.state.username && window.CList.state.username !== 'none' && window.CList.state.username !== '')
+            ? window.CList.state.username
             : 'Anonymous'
         const userColor = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')
 
@@ -599,7 +599,7 @@ window.accountSchemas['Collab'] = {
             name:       docId,
             document:   ydoc,
             token,
-            parameters: { kvstoreUrl: flaskSiteUrl, ...(mode === 'read' ? { mode: 'read' } : {}) },
+            parameters: { kvstoreUrl: window.CList.config.flaskSiteUrl, ...(mode === 'read' ? { mode: 'read' } : {}) },
             onStatus: ({ status }) => {
                 if (statusEl) statusEl.textContent = status
             },
@@ -632,8 +632,8 @@ window.accountSchemas['Collab'] = {
     // --- Load handler: browse and open existing collab documents ---
 
     ;(function () {
-        window.loadHandlers = window.loadHandlers || []
-        window.loadHandlers.push({
+        window.CList.loaders = window.CList.loaders || []
+        window.CList.loaders.push({
             label:   'Collab documents',
             icon:    'group',
             visible: () => typeof isRegistered === 'function' && isRegistered(),
@@ -643,7 +643,7 @@ window.accountSchemas['Collab'] = {
                 try {
                     const wsUrl = await getCollabWsUrl()
                     const base  = wsUrlToRestBase(wsUrl)
-                    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || ''
+                    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
                     const resp  = await fetch(`${base}/api/documents`, {
                         headers: { Authorization: `Bearer ${token}` }
                     })

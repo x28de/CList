@@ -10,7 +10,7 @@ See [README.md](README.md) for full architecture, kvstore/CORS details, and file
 - **No server-side logic** — all files are static HTML/CSS/JS served by Caddy
 - **External services**: kvstore (credential storage), opml2json (feed parsing), social platform APIs
 - **Credential storage**: encrypted client-side via PBKDF2 + AES-GCM; server stores only ciphertext
-- kvstore URL is set in `index.html` via `let flaskSiteUrl = 'https://kvstore.mooc.ca'`
+- kvstore URL is at `window.CList.config.flaskSiteUrl` (initialized in `index.html`)
 
 ## File Structure
 
@@ -105,7 +105,7 @@ Full reference: `docs/error-handling.md`. These rules apply to all new and modif
 ## Cautions
 
 - `interface.js` must load last (depends on all other scripts)
-- Global variables (`username`, `flaskSiteUrl`, `accounts`, `BaseURL`, `accessCode`) are set in
-  `index.html` `<head>` and used across modules
+- All shared state lives under `window.CList`: `config.flaskSiteUrl`, `state.username`,
+  `accounts`, `readers`, `publishers`, `savers`, `loaders`, `schemas`
 - TinyMCE is loaded from `https://www.downes.ca/assets/tinymce/tinymce.min.js`
 - Do **not** use `flask-cors` for kvstore — handle CORS entirely in Caddy (see README.md)

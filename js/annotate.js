@@ -8,8 +8,8 @@ console.log('[annotations] annotate.js loading');
 //  This software carries NO WARRANTY OF ANY KIND.
 //  This software is provided "AS IS," and you, its user, assume all risks when using it.
 
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['Annotate'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['Annotate'] = {
     type: 'Annotate',
     instanceFromKey: true,
     kvKey: { label: 'Store URL', placeholder: 'https://annotations.mooc.ca' },
@@ -32,7 +32,7 @@ function _didToProfileUrl(did) {
     const m = String(did || '').match(/^did:web:([^:]+):users:(.+)$/);
     if (!m) return null;
     const base = `https://${m[1]}/users/${m[2]}/did.html`;
-    const myKvstore = typeof flaskSiteUrl !== 'undefined' ? flaskSiteUrl : null;
+    const myKvstore = typeof window.CList.config.flaskSiteUrl !== 'undefined' ? window.CList.config.flaskSiteUrl : null;
     if (!myKvstore) return base;
     const params = `?mykvstore=${encodeURIComponent(myKvstore)}`;
     return base + params;
@@ -280,8 +280,8 @@ window.openAnnotationEditor = function(itemId) {
 // ── Publish handler ────────────────────────────────────────────────────────────
 
 (function() {
-    window.publishHandlers = window.publishHandlers || {};
-    window.publishHandlers['Annotate'] = {
+    window.CList.publishers = window.CList.publishers || {};
+    window.CList.publishers['Annotate'] = {
         construct: function(title, post) {
             // Extract just the editor body from the packagePost() wrapper
             const parsed = new DOMParser().parseFromString(post, 'text/html');
@@ -303,7 +303,7 @@ window.openAnnotationEditor = function(itemId) {
                 return null;
             }
 
-            const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
+            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
             if (!token) {
                 showStatusMessage('Not logged in — cannot post annotation.');
                 return null;
@@ -392,13 +392,13 @@ async function _offerCollectAfterAnnotation(ref) {
     const itemId = ref.statusID || ref.id;
     if (!itemId) return;
 
-    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
     if (!token) return;
 
     try {
-        const encKey = await getEncKey(flaskSiteUrl);
+        const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
         if (!encKey) return;
-        const resp = await fetch(`${flaskSiteUrl}/get_kvs/`,
+        const resp = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`,
             { headers: { Authorization: 'Bearer ' + token } });
         if (!resp.ok) return;
         const kvs = await resp.json();
@@ -488,14 +488,14 @@ async function _getFederatedAnnotationAccounts() {
         return _federatedCache;
     }
 
-    const token  = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
-    const encKey = token ? await getEncKey(flaskSiteUrl) : null;
+    const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const encKey = token ? await getEncKey(window.CList.config.flaskSiteUrl) : null;
     if (!encKey) { _federatedCache = []; return []; }
 
     // Fetch all KV pairs and find follow entries
     let kvs = [];
     try {
-        const resp = await fetch(`${flaskSiteUrl}/get_kvs/`,
+        const resp = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`,
             { headers: { Authorization: 'Bearer ' + token } });
         if (resp.ok) kvs = await resp.json();
     } catch (e) {
@@ -552,12 +552,12 @@ async function _getFollowedDids() {
     if (_followedDidsCache && Date.now() - _followedDidsCacheTime < _FEDERATED_TTL) {
         return _followedDidsCache;
     }
-    const token  = getSiteSpecificCookie(flaskSiteUrl, 'access_token');
-    const encKey = token ? await getEncKey(flaskSiteUrl) : null;
+    const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const encKey = token ? await getEncKey(window.CList.config.flaskSiteUrl) : null;
     if (!encKey) { _followedDidsCache = new Set(); return _followedDidsCache; }
     let kvs = [];
     try {
-        const resp = await fetch(`${flaskSiteUrl}/get_kvs/`,
+        const resp = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`,
             { headers: { Authorization: 'Bearer ' + token } });
         if (resp.ok) kvs = await resp.json();
     } catch (e) { console.error('_getFollowedDids: KV fetch failed', e); }
@@ -578,7 +578,7 @@ window._getFollowedDids = _getFollowedDids;
 
 // Returns the combined list of local + federated annotation accounts, deduplicated by instance URL.
 async function _allAnnotationAccounts() {
-    const local = (accounts || [])
+    const local = (window.CList.accounts || [])
         .map(a => parseAccountValue(a))
         .filter(d => d && (d.type === 'Annotate' || d.type === 'Hypothesis') && d.instance);
     const federated = await _getFederatedAnnotationAccounts();
@@ -686,11 +686,11 @@ window.checkAnnotationsBatch = async function() {
 
         // Inject "Follow feed author" buttons for items whose feed advertises a DID.
         // Runs async after annotation counts so it doesn't block the main check.
-        const batchToken = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
+        const batchToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
         if (batchToken) {
-            const batchMyKvDomain = (flaskSiteUrl || '').replace(/^https?:\/\//, '');
-            const batchMyDid = (typeof username !== 'undefined' && username)
-                ? `did:web:${batchMyKvDomain}:users:${username}` : '';
+            const batchMyKvDomain = (window.CList.config.flaskSiteUrl || '').replace(/^https?:\/\//, '');
+            const batchMyDid = window.CList.state.username
+                ? `did:web:${batchMyKvDomain}:users:${window.CList.state.username}` : '';
             const batchFollowedDids = await _getFollowedDids();
 
             // Collect unique feed URLs from all visible items
@@ -784,13 +784,13 @@ async function _flowAnnotation(anno, targetUrl, writeAccts, token, btn) {
 
 // Look up a DID by social handle (e.g. "user@mastodon.social") across known kvstore instances.
 // Queries each kvstore's /users/by-handle endpoint and returns the first matched DID, or null.
-// kvstoreUrls defaults to the user's own flaskSiteUrl plus any configured kvstore accounts.
+// kvstoreUrls defaults to the user's own window.CList.config.flaskSiteUrl plus any configured kvstore accounts.
 async function findDidByHandle(handle) {
     if (!handle) return null;
 
     // Collect kvstore URLs to search: own + any additional configured kvstore accounts
-    const kvUrls = new Set([flaskSiteUrl].filter(Boolean));
-    (window.accounts || []).forEach(a => {
+    const kvUrls = new Set([window.CList.config.flaskSiteUrl].filter(Boolean));
+    (window.CList.accounts || []).forEach(a => {
         const d = parseAccountValue(a);
         if (d && d.type === 'kvstore' && d.instance) kvUrls.add(d.instance);
     });
@@ -823,7 +823,7 @@ async function _getAuthorDidFromFeed(feedUrl) {
     if (_feedAuthorDidCache.has(feedUrl)) return _feedAuthorDidCache.get(feedUrl);
     let serviceUrl = 'https://opml2json.downes.ca';
     try {
-        const accts = Array.isArray(window.accounts) ? window.accounts : [];
+        const accts = Array.isArray(window.CList.accounts) ? window.CList.accounts : [];
         const found = accts.find(a => {
             const d = parseAccountValue(a);
             return d && d.type === 'OPML2JSON';
@@ -850,7 +850,7 @@ async function _getAuthorDidFromFeed(feedUrl) {
 async function _followUser(did, token, btn) {
     let encKey;
     try {
-        encKey = await getEncKey(flaskSiteUrl);
+        encKey = await getEncKey(window.CList.config.flaskSiteUrl);
     } catch (e) {
         console.error('_followUser: getEncKey failed:', e);
         showStatusMessage('Could not retrieve encryption key — please log in again.');
@@ -862,7 +862,7 @@ async function _followUser(did, token, btn) {
     btn.disabled = true;
     try {
         const encryptedValue = await encryptWithKey(encKey, JSON.stringify(value));
-        const resp = await fetch(`${flaskSiteUrl}/add_kv/`, {
+        const resp = await fetch(`${window.CList.config.flaskSiteUrl}/add_kv/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify({ key, value: encryptedValue }),
@@ -1136,8 +1136,8 @@ window.showAnnotationsForItem = async function(itemId) {
     const guid = el.reference.guid;
     const checkUrls = guid && guid !== url ? [url, guid] : [url];
 
-    const token = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
-    const annotateAccounts = (accounts || [])
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
+    const annotateAccounts = (window.CList.accounts || [])
         .map(a => parseAccountValue(a))
         .filter(d => d && d.type === 'Annotate' && d.instance);
     const writeAccts = token
@@ -1145,9 +1145,9 @@ window.showAnnotationsForItem = async function(itemId) {
         : [];
 
     // Compute logged-in user's DID here (before forEach where `username` would be shadowed)
-    const myKvDomain = (flaskSiteUrl || '').replace(/^https?:\/\//, '');
-    const myDid = (typeof username !== 'undefined' && username)
-        ? `did:web:${myKvDomain}:users:${username}` : '';
+    const myKvDomain = (window.CList.config.flaskSiteUrl || '').replace(/^https?:\/\//, '');
+    const myDid = window.CList.state.username
+        ? `did:web:${myKvDomain}:users:${window.CList.state.username}` : '';
 
     const followedDids = await _getFollowedDids();
 
@@ -1316,9 +1316,8 @@ async function _fetchAnnotationFeedForAccount(acct, since) {
             ? await window.hypothesisFeedFetch(acct, since) : [];
     }
     const creatorDid = acct._did || (
-        typeof username !== 'undefined' && username &&
-        typeof flaskSiteUrl !== 'undefined' && flaskSiteUrl
-            ? `did:web:${flaskSiteUrl.replace(/^https?:\/\//, '')}:users:${username}`
+        window.CList.state.username && window.CList.config.flaskSiteUrl
+            ? `did:web:${window.CList.config.flaskSiteUrl.replace(/^https?:\/\//, '')}:users:${window.CList.state.username}`
             : null
     );
     if (!creatorDid || !acct.instance) return [];
@@ -1371,11 +1370,11 @@ window.showAllAnnotations = async function() {
         feedContainer.innerHTML = '<p class="feed-status-message">No annotations in the last 14 days.</p>';
         return;
     }
-    const token        = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
-    const myKvDomain   = (flaskSiteUrl || '').replace(/^https?:\/\//, '');
-    const myDid        = (typeof username !== 'undefined' && username)
-        ? `did:web:${myKvDomain}:users:${username}` : '';
-    const annotateAccts = (accounts || [])
+    const token        = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
+    const myKvDomain   = (window.CList.config.flaskSiteUrl || '').replace(/^https?:\/\//, '');
+    const myDid        = window.CList.state.username
+        ? `did:web:${myKvDomain}:users:${window.CList.state.username}` : '';
+    const annotateAccts = (window.CList.accounts || [])
         .map(a => parseAccountValue(a))
         .filter(d => d && d.type === 'Annotate' && d.instance);
     const writeAccts   = token

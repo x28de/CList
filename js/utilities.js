@@ -51,21 +51,21 @@ function getCookie(name) {
 
 // Site Specific Cookies
 
-function deriveSiteIdentifier(flaskSiteUrl) {
-    if (!flaskSiteUrl) { console.error("No flask site URL provided."); }
-    return new URL(flaskSiteUrl).hostname.replace(/\./g, '_');
+function deriveSiteIdentifier(siteUrl) {
+    if (!siteUrl) { console.error("No flask site URL provided."); }
+    return new URL(siteUrl).hostname.replace(/\./g, '_');
 }
 
-function setSiteSpecificCookie(flaskSiteUrl, name, value, days) {
-    setCookie(`${name}_${deriveSiteIdentifier(flaskSiteUrl)}`, value, days);
+function setSiteSpecificCookie(siteUrl, name, value, days) {
+    setCookie(`${name}_${deriveSiteIdentifier(siteUrl)}`, value, days);
 }
 
-function getSiteSpecificCookie(flaskSiteUrl, name) {
-    return getCookie(`${name}_${deriveSiteIdentifier(flaskSiteUrl)}`);
+function getSiteSpecificCookie(siteUrl, name) {
+    return getCookie(`${name}_${deriveSiteIdentifier(siteUrl)}`);
 }
 
-function deleteSiteSpecificCookie(flaskSiteUrl, name) {
-    setCookie(`${name}_${deriveSiteIdentifier(flaskSiteUrl)}`, '', -1);
+function deleteSiteSpecificCookie(siteUrl, name) {
+    setCookie(`${name}_${deriveSiteIdentifier(siteUrl)}`, '', -1);
 }
 
 // Extract baseURL  (from username@baseURL.social allowing for submission of baseURL.social)

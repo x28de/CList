@@ -63,9 +63,30 @@ See `ui_components.md` for the full div tree, CSS classes, and JS helpers for bu
 
 ### Feed reading
 
-The **Read** button opens an account list. Selecting a read-enabled account calls the service's reader handler, which offers one or more feed views (Timeline, Bookmarks, Search, etc.) as buttons in `#feed-menu`. Feed items are rendered into `#feed-container`.
+The **Read** button opens an account list. Selecting a read-enabled account calls `switchReaderAccount()` in `reader.js`, which dispatches entirely through the registry — it has no knowledge of individual service types:
 
-Services register reader handlers via `window.CList.readers`. See `feed-structure.md` for DOM conventions and `adding-a-service.md` for the registration API.
+```js
+const handler = window.CList.readers[accountData.type];
+await handler.initialize(accountData);
+```
+
+`setupFeedButtons()` in `interface.js` reads `handler.feedFunctions` and renders the feed-type buttons. Feed items are rendered into `#feed-container` by each service's own fetch functions.
+
+The full reader handler shape:
+
+```js
+window.CList.readers['MyService'] = {
+    initialize:    async (accountData) => { /* connect, load first feed */ },
+    feedFunctions: { 'Timeline': fn, 'Bookmarks': fn, … },  // rendered as buttons
+    onFeedClick:   (item) => { /* navigate to item's feed */ },     // or null
+    onAuthorClick: (item) => { /* navigate to author's profile */ },// or null
+    statusActions: (item, itemID, itemUrl) => htmlString,           // or null
+};
+```
+
+`initialize(accountData)` receives the full parsed account object — `accountData.instance`, `accountData.id`, `accountData.type`, etc. — and is responsible for extracting whatever credentials or URLs it needs.
+
+Services register reader handlers via `window.CList.readers`. See `feed-structure.md` for DOM conventions and `adding-a-service.md` for the full registration pattern.
 
 ### Writing and editing
 
@@ -252,6 +273,15 @@ See `error-handling.md` for the full rules, context-specific guidance (P2P chat,
 
 ## JS module load order
 
-Scripts are loaded via `index.html`. `interface.js` depends on all others and must be the last script loaded (no `defer`). All other scripts use `defer`. Service scripts go in the appropriate group before `interface.js`.
+Scripts are loaded via `index.html` with `defer`. All deferred scripts execute in document order before `DOMContentLoaded` fires, so by the time `kvstore.js`'s `DOMContentLoaded` handler runs (checking login state, populating accounts), every service file has already registered its handlers.
 
-The `window.CList` namespace is declared in an inline `<script>` in `index.html` `<head>` — before any deferred module loads — so every service script can safely write to `window.CList.readers`, `window.CList.schemas`, etc. at top level without a `|| {}` guard.
+The `window.CList` namespace is declared in an inline `<script>` in `<head>` before any deferred script loads, so service files can write directly to `window.CList.readers`, `window.CList.schemas`, etc. — no defensive initialization needed, and registration order among service files does not matter.
+
+The following ordering constraints do apply:
+
+| Constraint | Why |
+|---|---|
+| `utilities.js` first | `showStatusMessage`, `parseAccountValue`, `escapeHtml` are called by every other module |
+| `crypto_utils.js` before `kvstore.js` | `kvstore.js` calls `deriveEncKey` / `deriveAuthHash` |
+| `kvstore.js` before service files | Service files call `getSiteSpecificCookie`, `getAccounts`, `loginRequired` — all defined in `kvstore.js` |
+| `interface.js` last | Reads from all registries and wires up the full UI; handlers registered after it runs would be invisible |

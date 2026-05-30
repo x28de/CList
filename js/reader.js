@@ -155,18 +155,7 @@ function finderString() {
 
   
 
-// Call the initialize function
 
-async function initializeReader(readerType, baseURL, accessToken) {
-
-    if (readerHandlers[readerType] && typeof readerHandlers[readerType].initialize === 'function') {
-        await readerHandlers[readerType].initialize(baseURL, accessToken);
-    } else {
-        console.error(`reader type '${readerType}' is not supported or does not have an initialize method.`);
-        showStatusMessage(`"${readerType}" is not a supported reader type — check your account settings.`);
-    }
-
-}
 
 
 // This function starts up the reader in the reader div 'read-section'
@@ -229,7 +218,7 @@ function findPanel() {
     tip.textContent = 'Enter search term and select service';
     list.appendChild(tip);
 
-    Object.entries(readerHandlers).forEach(([key, handler]) => {
+    Object.entries(window.CList.readers).forEach(([key, handler]) => {
         if (typeof handler.search !== 'function') return;
         const btn = document.createElement('button');
         btn.className = 'account-button';
@@ -285,28 +274,24 @@ function populateReadAccountList(accounts) {
     
 // Function to switch accounts
 async function switchReaderAccount(key) {
-    const selectedAccount = accounts.find(acc => acc.key === key);
+    const selectedAccount = window.CList.accounts.find(acc => acc.key === key);
     const accountData = parseAccountValue(selectedAccount);
     if (!accountData) { showStatusMessage('Could not read account data — it may be corrupt.'); return; }
-    const instance = accountData.instance;
-    const baseURL = extractBaseUrl(accountData.instance);
-    const accessToken = accountData.id;
     const instanceType = accountData.type;
-    console.log("baseURL "+baseURL+" accessRoken "+accessToken+" and Loading feed type "+accountData.type);
-    setupFeedButtons(instanceType);  // Different feed buttons for different services
-    document.getElementById('feed-container').innerHTML = '';   // Empty feed container
+    const handler = window.CList.readers[instanceType];
+
+    if (!handler) {
+        console.error('Unsupported instance type:', instanceType);
+        showStatusMessage(`"${instanceType}" accounts are not supported as a reader — check your account type.`);
+        return;
+    }
+
+    setupFeedButtons(instanceType);
+    document.getElementById('feed-container').innerHTML = '';
 
     try {
-        switch (instanceType) {
-            // case 'Mastodon': await initializeMasto(baseURL, accessToken); break;
-            case 'Mastodon': await initializeReader('Mastodon',baseURL, accessToken); break;
-            case 'Bluesky': await initializeReader('Bluesky',instance, accessToken); break;
-            case 'OPML': await initializeOPML(instance, accessToken); break;
-            case 'RSS':  await initializeRSS(accountData); break;
-            // Additional cases can be easily added here
-            default:
-                console.error('Unsupported instance type:', instanceType);
-                showStatusMessage(`"${instanceType}" accounts are not supported as a reader — check your account type.`);
+        if (typeof handler.initialize === 'function') {
+            await handler.initialize(accountData);
         }
     } catch (err) {
         console.error('Error loading feed:', err);
@@ -410,7 +395,7 @@ function makeListing(
     summaryDiv.id = `${itemID}-summary`;
     summaryDiv.style.display = 'block';
 
-    const feedHandler = readerHandlers[service]?.onFeedClick;
+    const feedHandler = window.CList.readers[service]?.onFeedClick;
     const feedEl = document.createElement(feedHandler ? 'a' : 'span');
     if (feedHandler) {
         feedEl.href = '#';
@@ -420,7 +405,7 @@ function makeListing(
     feedEl.textContent = itemFeed || 'Unknown Source';
     summaryDiv.appendChild(feedEl);
 
-    const authorHandler = readerHandlers[service]?.onAuthorClick;
+    const authorHandler = window.CList.readers[service]?.onAuthorClick;
     if (itemAuthor && authorHandler) {
         summaryDiv.appendChild(document.createTextNode(' · '));
         const authorEl = document.createElement('a');
@@ -510,7 +495,7 @@ function makeListing(
     const statusActions = document.createElement('div');
     statusActions.classList.add('status-actions'); // Add a class for styling
   
-    const _statusActionsHtml = readerHandlers[service]?.statusActions?.(item, itemID, itemUrl);
+    const _statusActionsHtml = window.CList.readers[service]?.statusActions?.(item, itemID, itemUrl);
     if (_statusActionsHtml == null) {
         console.error('makeListing: no statusActions handler for service', service);
     }

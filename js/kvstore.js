@@ -550,7 +550,7 @@ window.addEventListener('popstate', (e) => {
 
                 const accounts = await Promise.all(
                     data
-                        .filter(kv => !kv.key.startsWith('_'))  // exclude system keys
+                        .filter(kv => !kv.key.startsWith('_') && !kv.key.startsWith('collection:'))  // exclude system and collection keys
                         .map(async kv => {
 
                     try {

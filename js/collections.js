@@ -175,7 +175,8 @@ function _loadCollectionIntoEditor(items) {
 
     const paragraphs = filteredItems.map(item => {
         const author = (item.author_name && !item.author_name.startsWith('('))
-            ? item.author_name : (item.feed || 'Unknown');
+            ? item.author_name
+            : ((item.feed && item.feed !== '(no feed specified)') ? item.feed : (item.service || 'Unknown'));
         const body = item.summary || item.title || '';
         return isHtmlEditor
             ? `<p><strong>${escapeHtml(author)}</strong> wrote: ${escapeHtml(body)}</p>`
@@ -191,28 +192,13 @@ function _loadCollectionIntoEditor(items) {
     }
 
     // ── 2. Load all items into the reference list ────────────────────────────
-    const editorDivId = isHtmlEditor ? 'tinymceEditorDiv' : 'textEditorDiv';
-    const editorDiv = document.getElementById(editorDivId);
-    if (!editorDiv) return;
-
-    editorDiv.references = editorDiv.references || [];
-    const existingUrls = new Set(editorDiv.references.map(r => r.url));
     let added = 0;
-
     for (const item of items) {
-        if (!item.url || existingUrls.has(item.url)) continue;
-        editorDiv.references.push({ ...item, statusID: item.id });
-        existingUrls.add(item.url);
-        added++;
+        if (pushReference({ ...item, statusID: item.id })) added++;
     }
 
-    if (added > 0) {
-        const refsBtn = document.getElementById('references-button');
-        if (refsBtn) refsBtn.style.display = '';
-    }
-
-    if (typeof displayReferences === 'function') displayReferences(editorDiv);
-    showStatusMessage('References loaded — click Refs to view');
+    if (added > 0) showStatusMessage('References loaded — click Refs to view');
+    else showStatusMessage('All references already loaded.');
 }
 
 // Remove one item from a collection in kvstore and update the UI in place.

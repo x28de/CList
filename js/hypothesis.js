@@ -313,14 +313,8 @@ window.hypothesisCreate = async function(acct, payload) {
                 return null;
             }
 
-            const editorDivId = (typeof currentEditor !== 'undefined' && currentEditor === 'tinymce')
-                ? 'tinymceEditorDiv' : 'textEditorDiv';
-            const editorDiv = document.getElementById(editorDivId);
-            const refs = (editorDiv?.references && editorDiv.references.length)
-                ? editorDiv.references
-                : (typeof _annotationTarget !== 'undefined' && _annotationTarget ? [_annotationTarget] : null);
-
-            if (!refs || !refs.length) {
+            const refs = getReferences();
+            if (!refs.length) {
                 showStatusMessage('No target — load items into the editor before annotating.');
                 return null;
             }

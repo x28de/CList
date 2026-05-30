@@ -218,20 +218,23 @@ function _appendAddForm(panel, itemID, url, writeAccts, token) {
 
 // ── Open write-pane annotation editor ─────────────────────────────────────────
 
-let _annotationTarget = null;   // full reference object captured when editor is opened
-
 window.clistAnnotate = function(itemId) {
     const el = document.getElementById(itemId);
     if (!el || !el.reference) {
         showStatusMessage('No reference found for this item.');
         return;
     }
-    _annotationTarget = { ...el.reference };
+    pushReference({ ...el.reference });
 
     const selection = window.getSelection();
     const selectedText = selection ? selection.toString().trim() : '';
-    const content = selectedText
-        ? { type: 'text/plain', value: `${el.reference.author_name || 'Unknown'} wrote: "${selectedText}"\n` }
+    const textToQuote = selectedText || el.reference.summary || '';
+    const isUnknownAuthor = !el.reference.author_name || el.reference.author_name === '(unknown author)';
+    const attribution = isUnknownAuthor
+        ? (el.reference.feed && el.reference.feed !== '(no feed specified)' ? el.reference.feed : el.reference.service || 'Unknown')
+        : el.reference.author_name;
+    const content = textToQuote
+        ? { type: 'text/plain', value: `${attribution} wrote: "${textToQuote}"\n` }
         : { type: 'text/plain', value: '' };
 
     if (typeof loadContent === 'function') loadContent(content, itemId);
@@ -250,7 +253,7 @@ window.openAnnotationEditor = function(itemId) {
         showStatusMessage('No reference found for this item.');
         return;
     }
-    _annotationTarget = { ...el.reference };
+    pushReference({ ...el.reference });
 
     // Clear the active editor content
     const textarea = document.getElementById('text-column');
@@ -289,16 +292,8 @@ window.openAnnotationEditor = function(itemId) {
             return postContent ? postContent.innerHTML.trim() : post;
         },
         publish: async function(accountData, title, content) {
-            // Collect targets: use the editor's full reference list if populated,
-            // otherwise fall back to the single _annotationTarget set by openAnnotationEditor.
-            const editorDivId = (typeof currentEditor !== 'undefined' && currentEditor === 'tinymce')
-                ? 'tinymceEditorDiv' : 'textEditorDiv';
-            const editorDiv = document.getElementById(editorDivId);
-            const refs = (editorDiv?.references && editorDiv.references.length)
-                ? editorDiv.references
-                : (_annotationTarget ? [_annotationTarget] : null);
-
-            if (!refs || !refs.length) {
+            const refs = getReferences();
+            if (!refs.length) {
                 showStatusMessage('No target — load items into the editor before annotating.');
                 return null;
             }
@@ -359,8 +354,6 @@ window.openAnnotationEditor = function(itemId) {
                     failCount++;
                 }
             }
-
-            _annotationTarget = null;
 
             if (successCount === 0) return null;
 

@@ -10,8 +10,8 @@
             return  `<button class="material-icons md-18 md-light" onClick="window.open('${itemLink}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>`;;
         },
         feedFunctions: {
-            'Web': function() { readerHandlers['google'].search(); },
-            'Images': function() { readerHandlers['google'].search('image'); }
+            'Web': function() { window.CList.readers['google'].search(); },
+            'Images': function() { window.CList.readers['google'].search('image'); }
         },
         search: async (type) => {
             searchString = finderString();

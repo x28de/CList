@@ -275,7 +275,7 @@ function snapPanes(direction) {
         buttonsContainer.innerHTML = ''; // Removes all child elements     
 
         // Access feed functions for the given instance type
-        const handler = readerHandlers[instanceType];
+        const handler = window.CList.readers[instanceType];
         if (!handler || !handler.feedFunctions || Object.keys(handler.feedFunctions).length === 0) {
             console.error(`No feed functions defined for instance type: ${instanceType}`);
             return;
@@ -297,6 +297,7 @@ function snapPanes(direction) {
         translateBtn.textContent = 'Translate: ' + (translationEnabled ? 'ON' : 'OFF');
         translateBtn.onclick = toggleTranslation;
         buttonsContainer.appendChild(translateBtn);
+
 
     }
 

@@ -243,7 +243,7 @@
 
             if (valueData.type === 'RSS') { showRSSEditForm(targetKey, valueData); return; }
 
-            const schema = window.parent.accountSchemas && window.parent.accountSchemas[valueData.type];
+            const schema = window.parent.CList?.schemas?.[valueData.type];
             if (!schema) { window.parent.showStatusMessage('No schema for account type: ' + (valueData.type || 'unknown')); return; }
 
             buildFormFields(schema, 'edit', { _key: targetKey, ...valueData });
@@ -548,7 +548,7 @@
                 return;
             }
 
-            const schema = window.parent.accountSchemas && window.parent.accountSchemas[type];
+            const schema = window.parent.CList?.schemas?.[type];
             if (!schema) { window.parent.showStatusMessage('No schema for account type: ' + type); return; }
 
             document.getElementById('add-flow').style.display = 'none';
@@ -577,7 +577,7 @@
             if (!token) { statusEl.textContent = 'Please log in before adding a Collab account.'; return; }
 
             const base = wsUrl.replace(/^wss?:\/\//, 'https://').replace(/\/$/, '');
-            const parentUsername = window.parent.username;
+            const parentUsername = window.parent.CList?.state?.username;
             const kvDomain = flaskSiteUrl.replace(/^https?:\/\//, '');
             const did = (parentUsername && parentUsername !== 'none')
                 ? `did:web:${kvDomain}:users:${parentUsername}`
@@ -1003,7 +1003,7 @@
                 try {
                     const accts = await window.parent.getAccounts(flaskSiteUrl);
                     if (accts) {
-                        window.parent.accounts = accts;
+                        window.parent.CList.accounts = accts;
                         window.parent.populatePostOptions(accts);
                         window.parent.populateReadAccountList(accts);
                         window.parent.updateUIVisibility();
@@ -1077,8 +1077,8 @@
                 });
                 if (!resp.ok) throw new Error('Save failed: ' + resp.status);
 
-                window.parent.accounts = await window.parent.getAccounts(flaskSiteUrl);
-                window.parent.populatePostOptions(window.parent.accounts);
+                window.parent.CList.accounts = await window.parent.getAccounts(flaskSiteUrl);
+                window.parent.populatePostOptions(window.parent.CList.accounts);
                 window.parent.updateUIVisibility();
                 window.parent.showStatusMessage('Blogger account saved.');
                 cancelAdd();

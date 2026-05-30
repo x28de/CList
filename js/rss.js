@@ -43,7 +43,7 @@ window.CList.schemas['RSS'] = {
         name: 'RSS', display: 'RSS', icon: 'rss_feed',
         description: 'Read RSS feed collections',
         type: 'feed',
-        initialize: () => {},
+        initialize: async (accountData) => { await initializeRSS(accountData); },
         feedFunctions: {
             'Unread':     () => { rssActiveFeedFilter = null; rssFilter = 'unread';     rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },
             'All':        () => { rssActiveFeedFilter = null; rssFilter = 'all';        rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },

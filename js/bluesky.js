@@ -15,9 +15,10 @@ window.CList.schemas['Bluesky'] = {
     instanceFromKey: true,
     kvKey: { label: 'Username', placeholder: 'you.bsky.social' },
     fields: [
-        { key: 'title',       label: 'Title',        editable: true,  inputType: 'text',     placeholder: 'My Bluesky', default: '' },
-        { key: 'permissions', label: 'Permissions',  editable: true,  inputType: 'text',     placeholder: 'rw',         default: 'rw' },
-        { key: 'id',          label: 'App Password', editable: true,  inputType: 'password', placeholder: '',           default: '' },
+        { key: 'title',       label: 'Title',          editable: true,  inputType: 'text',     placeholder: 'My Bluesky', default: '' },
+        { key: 'permissions', label: 'Permissions',    editable: true,  inputType: 'text',     placeholder: 'rw',         default: 'rw' },
+        { key: 'id',          label: 'App Password',   editable: true,  inputType: 'password', placeholder: '',           default: '' },
+        { key: 'maxlength',   label: 'Maximum Length', editable: true,  inputType: 'text',     placeholder: '300',        default: '300' },
     ]
 };
 
@@ -29,7 +30,7 @@ let _bskyPds   = null;
 
 (function () {
     const blueskyHandler = {
-        initialize: async () => {
+        initialize: async (_accountData) => {
             await createBlueskySession();
         },
         feedFunctions: {
@@ -52,8 +53,37 @@ let _bskyPds   = null;
 (function () {
     window.CList.publishers = window.CList.publishers || {};
     window.CList.publishers['Bluesky'] = {
-        publish: async (_accountData, _title, content) => {
-            await submitBlueskyPost(content, 'post-result', null, null, null, null, null);
+        publish: async (_accountData, _title, content, refs) => {
+            const blueskyRefs = (refs || []).filter(r => r.replyToken?.type === 'Bluesky');
+            const replyToken = blueskyRefs[0]?.replyToken || null;
+            if (blueskyRefs.length > 1) {
+                showStatusMessage(
+                    `Replying to "${blueskyRefs[0].author_name}" on Bluesky. ` +
+                    `Cannot simultaneously reply to ${blueskyRefs.length - 1} other Bluesky ` +
+                    `post${blueskyRefs.length > 2 ? 's' : ''} — Bluesky only supports one reply target.`
+                );
+            }
+            // Bluesky enforces a 300-grapheme hard limit regardless of account settings
+            const BSKY_LIMIT = 300;
+            const segmenter = typeof Intl?.Segmenter === 'function' ? new Intl.Segmenter() : null;
+            const graphemeCount = segmenter
+                ? [...segmenter.segment(removeHtml(content))].length
+                : removeHtml(content).length;
+            let postContent = removeHtml(content);
+            if (graphemeCount > BSKY_LIMIT) {
+                showStatusMessage(`Bluesky post truncated to ${BSKY_LIMIT} graphemes (was ${graphemeCount}).`);
+                if (segmenter) {
+                    const segs = [...segmenter.segment(content)];
+                    postContent = segs.slice(0, BSKY_LIMIT).map(s => s.segment).join('');
+                } else {
+                    postContent = content.slice(0, BSKY_LIMIT);
+                }
+            }
+            const parentUri = replyToken?.uri  || null;
+            const parentCid = replyToken?.cid  || null;
+            const rootUri   = parentUri;
+            const rootCid   = parentCid;
+            await submitBlueskyPost(postContent, 'post-result', null, parentUri, parentCid, rootUri, rootCid);
             return null;
         }
     };
@@ -468,13 +498,15 @@ async function displayBlueskyPosts(posts, title, cursor = null, atUri) {
         }
 
         statusSpecific.reference = {
+            service:     'Bluesky',
             author_name: authorName,
-            author_id: handle,
-            url: postUrl,
-            title: 'Bluesky',
-            created_at: new Date().toISOString(),
-            id: statusSpecific.id,
-            summary: postContent.slice(0, 140),
+            author_id:   handle,
+            url:         postUrl,
+            title:       'Bluesky',
+            created_at:  new Date().toISOString(),
+            id:          statusSpecific.id,
+            summary:     postContent.slice(0, 140),
+            replyToken:  { type: 'Bluesky', uri: post.uri, cid: post.cid },
         };
 
         const isLiked    = !!(post.viewer && post.viewer.like);
@@ -657,7 +689,7 @@ async function submitBlueskyPost(content, responseDiv, replyContentId = null, pa
     };
 
     if (parentUri && parentCid && rootUri && rootCid) {
-        responseDiv = `replyResponse-${replyContentId.split('-')[1]}`;
+        if (replyContentId) responseDiv = `replyResponse-${replyContentId.split('-')[1]}`;
         record.reply = {
             root: { uri: rootUri, cid: rootCid },
             parent: { uri: parentUri, cid: parentCid },
@@ -782,6 +814,7 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
             statusContent.appendChild(statusSpecific);
 
             statusSpecific.reference = {
+                service:     'Bluesky',
                 author_name: name,
                 author_id:   handle,
                 url:         postUrl,
@@ -789,6 +822,7 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
                 created_at:  notif.indexedAt,
                 id:          postId,
                 summary:     notif.record.text.slice(0, 140),
+                replyToken:  { type: 'Bluesky', uri: notif.uri, cid: notif.cid },
             };
 
             const actionButtons = document.createElement('div');

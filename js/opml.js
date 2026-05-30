@@ -39,7 +39,7 @@ const audioFiles = [];
         icon: 'rss_feed',
         description: 'Reads feeds listed in an OPML file via the RSS reader.',
         type: 'feed',
-        initialize: () => {},
+        initialize: async (accountData) => { await initializeOPML(accountData.instance); },
         feedFunctions: {
             'Unread':     () => { rssActiveFeedFilter = null; rssFilter = 'unread';     rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },
             'All':        () => { rssActiveFeedFilter = null; rssFilter = 'all';        rssDisplayEntries().catch(e => { console.error(e); showStatusMessage('Could not display entries: ' + e.message); }); },

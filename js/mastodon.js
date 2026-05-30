@@ -48,10 +48,10 @@ let accessToken = null;
 
           (function () {
               const mastodonHandler = {
-                initialize: async (bUrl, token) => {
-                    baseURL     = bUrl;
-                    accessToken = token;
-                    await initializeMasto(bUrl, token);
+                initialize: async (accountData) => {
+                    baseURL     = extractBaseUrl(accountData.instance);
+                    accessToken = accountData.id;
+                    await initializeMasto(baseURL, accessToken);
                 },
                 onFeedClick:   null,
                 onAuthorClick: (item) => loadMastodonFeed('user', null, item.author),
@@ -80,10 +80,19 @@ let accessToken = null;
 (function () {
     window.CList.publishers = window.CList.publishers || {};
     window.CList.publishers['Mastodon'] = {
-        publish: async (accountData, title, content) => {
+        publish: async (accountData, title, content, refs) => {
             const responseDiv = document.getElementById('post-result');
             const cleanContent = removeHtml(content);
-            await postMastodonStatus(accountData.id, extractBaseUrl(accountData.instance), responseDiv, cleanContent);
+            const mastodonRefs = (refs || []).filter(r => r.replyToken?.type === 'Mastodon');
+            const replyToId = mastodonRefs[0]?.replyToken?.statusId || null;
+            if (mastodonRefs.length > 1) {
+                showStatusMessage(
+                    `Replying to "${mastodonRefs[0].author_name}" on Mastodon. ` +
+                    `Cannot simultaneously reply to ${mastodonRefs.length - 1} other Mastodon ` +
+                    `post${mastodonRefs.length > 2 ? 's' : ''} — Mastodon only supports one reply target.`
+                );
+            }
+            await postMastodonStatus(accountData.id, extractBaseUrl(accountData.instance), responseDiv, cleanContent, replyToId);
             return null;
         }
     };
@@ -658,14 +667,16 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
         const _mEl = document.createElement('div');
         _mEl.innerHTML = status.content;
         statusSpecific.reference = {
+            service:     'Mastodon',
             author_name: status.account.display_name,
-            author_id: status.account.acct,
-            feed: status.account.acct,
-            url: status.url,
-            title: 'Mastodon',
-            created_at: status.created_at,
-            id: status.id,
-            summary: (_mEl.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140),
+            author_id:   status.account.acct,
+            feed:        status.account.acct,
+            url:         status.url,
+            title:       'Mastodon',
+            created_at:  status.created_at,
+            id:          status.id,
+            summary:     (_mEl.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140),
+            replyToken:  { type: 'Mastodon', statusId: status.id },
         };
 
         console.log(statusSpecific);
@@ -881,8 +892,7 @@ async function displayMastodonPost(status, statusBox, headerHtml) {
 
             // Clear the status input field, if it was used
             const statusElement = document.getElementById('status');
-            if (statusElement) { statusElement.value = '';  } 
-            else { console.log('Status element is not defined.'); }
+            if (statusElement) statusElement.value = '';
 
             responseDiv.innerHTML = `<p>Status posted successfully!</p>`;
             setTimeout(() => { responseDiv.innerHTML = ''; }, 4000);

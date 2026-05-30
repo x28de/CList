@@ -138,36 +138,14 @@ let pendingTinymceDraftOffer = false;
 
 
 function createReference(statusID, editorDiv) {
-
-    // Get the reference from statusID
     const statusSpecific = document.getElementById(statusID);
-    const reference = statusSpecific.reference;
+    const reference = statusSpecific?.reference;
     if (!reference) {
-        console.error("Reference data not found in the provided statusSpecific object.");
+        console.error("Reference data not found for statusID:", statusID);
         return;
     }
-
-    // Store the reference data in a readable object format
-    if (!editorDiv.references) {
-        editorDiv.references = []; // Initialize if not already present
-    }
-
-    // Check if the reference already exists based on its URL
-    const isDuplicate = editorDiv.references.some(
-        (existingReference) => existingReference.url === reference.url
-    );
-
-    // Add the reference to the list if it's not a duplicate
-    if (!isDuplicate) {
-        editorDiv.references.push(reference);
-        console.log("Reference added:", reference);
-        const refsBtn = document.getElementById('references-button');
-        if (refsBtn) refsBtn.style.display = '';
-    } else {
-        console.log("Duplicate reference detected, not added:", reference);
-    }
+    pushReference(reference);
     return reference;
-
 }
 
 function displayCurrentReference(reference, editorDiv) {
@@ -194,28 +172,8 @@ function displayCurrentReference(reference, editorDiv) {
 
 }
 
-function displayReferences(editorDiv) {
-
-    // Define where we're writing the references
-    let referencesDiv = document.getElementById(currentEditor+'-references');
-    let writePane = document.getElementById('write-pane');  
-    if (!referencesDiv) {
-        referencesDiv = document.createElement('div');
-        referencesDiv.classList.add('allReferences');
-        referencesDiv.id = currentEditor+'-references';
-        writePane.appendChild(referencesDiv);
-    }
-
-    // Display the list of references as HTML
-    referencesDiv.innerHTML = `<h2 class="feed-header">References</h2>`;
-    referencesDiv.innerHTML += editorDiv.references
-        .map(
-            (ref, index) => `
-        <div  class="status-box">
-            <p><strong>${index + 1}. ${ref.author_name}. ${ref.title}. <em>${ref.feed}.</em> ${ref.created_at}. <a href="${ref.url}" target="_blank">${ref.url}</a></p>
-        </div>`
-        )
-        .join('');
+function displayReferences(_editorDiv) {
+    _renderReferencesPanel();
 }
 
 

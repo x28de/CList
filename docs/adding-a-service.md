@@ -1,6 +1,6 @@
 # Adding a Service to CList
 
-This guide explains how to integrate a new service with CList's registry system. It covers account schemas, the reader, save, and load handlers, and how to wire a script into the page.
+This guide explains how to integrate a new service with CList's registry system. It covers account schemas, reader, save, and load handlers, and how to wire a script into the page.
 
 For services that publish editor content to an external platform (Mastodon, WordPress, etc.), see `publish_structure.md` for the publish handler contract.
 
@@ -8,19 +8,19 @@ For services that publish editor content to an external platform (Mastodon, Word
 
 ## Architecture overview
 
-CList uses a set of global registries — plain JavaScript objects and arrays — that services populate at load time. Each registry handles one concern:
+CList uses a set of global registries under `window.CList` that services populate at load time. Each registry handles one concern:
 
 | Registry | Purpose | Key type |
 |---|---|---|
-| `window.accountSchemas` | Defines the account form fields in the Accounts panel | `'TypeName'` |
-| `window.publishHandlers` | Called by **Post** to send content to the service | `'TypeName'` |
-| `window.readerHandlers` | Called by **Read** to initialize a session and offer feed views | `'TypeName'` |
-| `window.saveHandlers` | Called by **Save** to persist content (local or remote) | push to array |
-| `window.loadHandlers` | Called by **Load** to pull content into the editor | push to array |
+| `window.CList.schemas` | Defines the account form fields in the Accounts panel | `'TypeName'` |
+| `window.CList.publishers` | Called by **Post** to send content to the service | `'TypeName'` |
+| `window.CList.readers` | Called by **Read** to initialize a session and offer feed views | `'TypeName'` |
+| `window.CList.savers` | Called by **Save** to persist content (local or remote) | push to array |
+| `window.CList.loaders` | Called by **Load** to pull content into the editor | push to array |
 
-The registries are initialized in `publish.js` and `editors.js` and must exist before your file runs, so always guard with `window.X = window.X || {}`.
+The `window.CList` namespace is declared in an inline `<script>` in `index.html` before any deferred script loads. All registries are guaranteed to exist — no defensive initialization is needed.
 
-Scripts are loaded via `index.html`. `interface.js` must remain last; add your service script before it.
+Scripts are loaded via `index.html` with `defer`. `interface.js` must remain last; add your service script before it.
 
 ---
 
@@ -29,20 +29,19 @@ Scripts are loaded via `index.html`. `interface.js` must remain last; add your s
 Create one file per service: `js/myservice.js`. Wrap each registry registration in an IIFE so it does not pollute the global scope. Helper functions go outside the IIFEs so they can be called from within them.
 
 ```javascript
-// 1. Account schema (always first — no IIFE needed)
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['MyService'] = { /* see below */ };
+// 1. Account schema
+(function () {
+    window.CList.schemas['MyService'] = { /* see below */ };
+})();
 
 // 2. Publish handler (see publish_structure.md)
 (function () {
-    window.publishHandlers = window.publishHandlers || {};
-    window.publishHandlers['MyService'] = { /* publish, construct */ };
+    window.CList.publishers['MyService'] = { /* publish, construct */ };
 })();
 
 // 3. Reader handler (optional)
 (function () {
-    window.readerHandlers = window.readerHandlers || {};
-    window.readerHandlers['MyService'] = { /* initialize, feedFunctions */ };
+    window.CList.readers['MyService'] = { /* initialize, feedFunctions, … */ };
 })();
 
 // 4. Helper functions (not wrapped — called from the handlers above)
@@ -56,7 +55,7 @@ async function myServiceFetch(credential, url) { /* … */ }
 Defines how the Accounts panel renders the form for this service type.
 
 ```javascript
-window.accountSchemas['MyService'] = {
+window.CList.schemas['MyService'] = {
     type: 'MyService',          // must match the registry key
     instanceFromKey: true,      // derive `accountData.instance` from the kvstore key
     kvKey: { label: 'Username', placeholder: 'you@myservice.example' },
@@ -93,29 +92,51 @@ The `permissions` string controls which panes show this account:
 
 ## 2. Publish handler
 
-See `publish_structure.md` for the full contract. In brief: register `window.publishHandlers['MyService']` with a `publish(accountData, title, content)` method and an optional `construct(title, content)` method.
+See `publish_structure.md` for the full contract. In brief: register `window.CList.publishers['MyService']` with a `publish(accountData, title, content)` method and an optional `construct(title, content)` method.
 
 ---
 
 ## 3. Reader handler (optional)
 
-Register a reader handler to add the service to the **Read** account list. When the user selects the account, `initialize()` is called, then `feedFunctions` entries appear as feed buttons.
+Register a reader handler to add the service to the **Read** account list. When the user selects the account, `reader.js` dispatches to the handler without any service-specific branching:
+
+```js
+const handler = window.CList.readers[accountData.type];
+await handler.initialize(accountData);
+```
+
+`initialize(accountData)` receives the full parsed account object and is responsible for extracting whatever it needs — credentials, instance URL, etc. The handler then owns all feed loading logic; `reader.js` has no knowledge of individual service types.
 
 ```javascript
 (function () {
-    window.readerHandlers = window.readerHandlers || {};
-    window.readerHandlers['MyService'] = {
+    window.CList.readers['MyService'] = {
 
         // Called once when the user selects this account for reading.
-        initialize: async (instance, credential) => {
-            await myServiceConnect(instance, credential);
+        // accountData shape: { type, instance, id, title, permissions, … }
+        initialize: async (accountData) => {
+            const baseURL = extractBaseUrl(accountData.instance);
+            const token   = accountData.id;
+            await myServiceConnect(baseURL, token);
         },
 
         // Feed names map to functions called when the user picks that feed view.
+        // These are rendered as buttons in #feed-menu by interface.js.
         feedFunctions: {
             'Timeline': loadMyServiceFeed.bind(null, 'home'),
             'Bookmarks': loadMyServiceFeed.bind(null, 'bookmarks'),
             'Search':   () => openLeftInterface(myServiceSearchForm()),
+        },
+
+        // Called when the user clicks the feed name on a feed item. null = not clickable.
+        onFeedClick: (item) => myServiceFilterByFeed(item.feedUrl),
+
+        // Called when the user clicks the author name on a feed item. null = not clickable.
+        onAuthorClick: (item) => myServiceLoadUserFeed(item.author),
+
+        // Returns an HTML string of action buttons for each feed item.
+        // Return null to show no actions (reader.js will log a warning).
+        statusActions: (item, itemID, itemUrl) => {
+            return `<button …>…</button>`;
         },
     };
 })();
@@ -123,7 +144,7 @@ Register a reader handler to add the service to the **Read** account list. When 
 
 ### Feed loading conventions
 - Clear `feedContainer.innerHTML = ''` on first page load; skip on pagination.
-- Append items by creating DOM elements, not by setting `innerHTML` with external data.
+- Append items by calling `makeListing(…)` from `reader.js`, which normalises items into the standard feed item DOM.
 - Wrap the full fetch in `try/catch`; on failure call `showServiceError(feedContainer, …)`.
 - If a page returns zero items, set `feedContainer.innerHTML = '<p class="feed-status-message">…</p>'`.
 
@@ -135,13 +156,12 @@ Adds an entry to the **Save** right pane. Use for local or remote persistence th
 
 ```javascript
 (function () {
-    window.saveHandlers = window.saveHandlers || [];
-    window.saveHandlers.push({
+    window.CList.savers.push({
         label: 'Save to MyService',
         icon:  'cloud_upload',          // Material Icons name
         // logoSrc: 'assets/myservice.svg', // alternative: masked SVG icon
         save: async () => {
-            const token   = getSiteSpecificCookie(flaskSiteUrl, 'access_token') || '';
+            const token   = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
             const handler = editorHandlers[currentEditor];
             const content = handler ? await handler.getContent() : '';
             try {
@@ -164,8 +184,7 @@ Adds an entry to the **Load** right pane. Use to pull content from a remote sour
 
 ```javascript
 (function () {
-    window.loadHandlers = window.loadHandlers || [];
-    window.loadHandlers.push({
+    window.CList.loaders.push({
         label: 'Load from MyService',
         icon:  'download',
         load: async () => {
@@ -198,7 +217,7 @@ Add your `<script>` tag in the appropriate group — social services go in the "
 <script src="js/myservice.js" defer></script>
 ```
 
-`interface.js` (the last script, without `defer`) must remain last.
+`interface.js` (the last script) must remain last.
 
 ### Version-busting
 

@@ -102,6 +102,30 @@ Full reference: `docs/error-handling.md`. These rules apply to all new and modif
 - `.error-message` — red, for hard failures requiring user action
 - `.feed-status-message` — neutral grey, for soft/informational states ("No posts found")
 
+## Reader dispatch
+
+`switchReaderAccount()` in `reader.js` is fully registry-driven — it has no knowledge of individual service types. All reader dispatch goes through:
+
+```js
+const handler = window.CList.readers[accountData.type];
+await handler.initialize(accountData);
+```
+
+`initialize(accountData)` receives the full parsed account object. Each handler extracts what it needs (`accountData.instance`, `accountData.id`, etc.). Do **not** add `case` branches to `switchReaderAccount` — register a handler instead.
+
+Full reader handler shape:
+```js
+window.CList.readers['MyService'] = {
+    initialize:    async (accountData) => { … },
+    feedFunctions: { 'Timeline': fn, … },   // rendered as buttons in #feed-menu
+    onFeedClick:   (item) => { … },         // or null
+    onAuthorClick: (item) => { … },         // or null
+    statusActions: (item, itemID, itemUrl) => htmlString,  // or null
+};
+```
+
+See `docs/adding-a-service.md` for the complete pattern.
+
 ## Cautions
 
 - `interface.js` must load last (depends on all other scripts)

@@ -132,7 +132,7 @@ function populateSaveOptions() {
     tip.textContent = 'Select a destination to save to';
     list.appendChild(tip);
 
-    saveHandlers.forEach(handler => {
+    window.CList.savers.forEach(handler => {
         const btn = document.createElement('button');
         btn.className = 'account-button';
 
@@ -200,7 +200,7 @@ async function postAll() {
         const accountData = parseAccountValue(account);
         if (!accountData) continue;
         const charLimit = selected.charLimit;
-        const handler = publishHandlers[accountData.type];
+        const handler = window.CList.publishers[accountData.type];
         if (!handler || typeof handler.publish !== 'function') {
             showPostMessage(resultDiv, `No publish handler registered for account type: ${accountData.type}`);
             continue;
@@ -230,7 +230,8 @@ async function postAll() {
             contentToPost = candidateText.substring(0, charLimit);
         }
 
-        const url = await handler.publish(accountData, writeColumnTitle, contentToPost);
+        const refs = getReferences();
+        const url = await handler.publish(accountData, writeColumnTitle, contentToPost, refs);
         if (url) {
             if (!publishedURL) publishedURL = url;
             const p = document.createElement('p');
@@ -239,6 +240,12 @@ async function postAll() {
             resultDiv.appendChild(p);
         }
     }
+
+    // Send WebMentions if the user has opted in
+    if (publishedURL && typeof sendWebMentions === 'function') {
+        sendWebMentions(publishedURL, getReferences());
+    }
+
     if (typeof window._onPostAllComplete === 'function') {
         const cb = window._onPostAllComplete;
         window._onPostAllComplete = null;
@@ -255,7 +262,7 @@ function showPostMessage(div, text) {
 
 // Dispatch publishing to the registered handler for the account type
 async function postContentByType(accountData, title, content) {
-    const handler = publishHandlers[accountData.type];
+    const handler = window.CList.publishers[accountData.type];
     if (!handler || typeof handler.publish !== 'function') {
         showStatusMessage('No publish handler registered for account type: ' + accountData.type);
         return null;

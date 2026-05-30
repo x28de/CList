@@ -206,7 +206,7 @@ function populateLoadOptions() {
     tip.textContent = 'Select a source to load from';
     list.appendChild(tip);
 
-    loadHandlers.forEach(handler => {
+    window.CList.loaders.forEach(handler => {
         if (typeof handler.visible === 'function' && !handler.visible()) return;
         const btn = document.createElement('button');
         btn.className = 'account-button';

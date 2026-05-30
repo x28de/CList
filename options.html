@@ -22,6 +22,10 @@
             <button class="nav-btn" id="dark-mode-toggle" onclick="toggleDarkMode()">Dark Mode: Off</button>
             <p class="nav-desc">Switch between light and dark colour schemes.</p>
         </div>
+        <div class="nav-item">
+            <button class="nav-btn" id="webmention-toggle" onclick="toggleWebMention()">WebMention: Off</button>
+            <p class="nav-desc">When on, notifies source URLs via <a href="https://www.w3.org/TR/webmention/" target="_blank">WebMention</a> after each publish.</p>
+        </div>
     </div>
 </div>
 <script>
@@ -60,7 +64,21 @@
         } catch(e) {}
         updateToggle();
     }
-    document.addEventListener('DOMContentLoaded', updateToggle);
+    function updateWebMentionToggle() {
+        const on = localStorage.getItem('clist_webmention_enabled') === 'true';
+        document.getElementById('webmention-toggle').textContent = on ? 'WebMention: On' : 'WebMention: Off';
+    }
+    function toggleWebMention() {
+        const on = localStorage.getItem('clist_webmention_enabled') === 'true';
+        const nowOn = !on;
+        localStorage.setItem('clist_webmention_enabled', nowOn ? 'true' : 'false');
+        // Keep in sync with parent frame if loaded
+        if (window.parent && typeof window.parent.setWebmentionEnabled === 'function') {
+            window.parent.setWebmentionEnabled(nowOn);
+        }
+        updateWebMentionToggle();
+    }
+    document.addEventListener('DOMContentLoaded', () => { updateToggle(); updateWebMentionToggle(); });
 </script>
 </body>
 </html>

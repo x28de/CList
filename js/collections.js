@@ -27,7 +27,7 @@ async function _showCollectionPicker(itemId, opts = {}) {
     document.querySelectorAll('.' + PICKER_CLASS).forEach(el => el.remove());
     if (existing) return;
 
-    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
     if (!token) { showStatusMessage('Please log in to save to a collection.'); return; }
 
     const specificEl = document.getElementById(itemId);
@@ -288,7 +288,7 @@ function _renderCollectionItems(col, token, encKey, countSpan, itemsDiv) {
 // Open a single collection in a detail view, replacing the collection list.
 // Browser back button and the in-view back icon both return to the list.
 function _showCollectionDetail(col, token, encKey) {
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
     if (!feedContainer) return;
 
     // Push state so the browser back button can return to the list
@@ -361,15 +361,15 @@ window.showSavedCollections = async function() {
     }
 
     const feedSection   = document.getElementById('feed-section');
-    const feedMenu      = document.getElementById('feed-menu');
-    const feedContainer = document.getElementById('feed-container');
+    const feedMenu      = window.CList.ui.view.feedMenu;
+    const feedContainer = window.CList.ui.view.feedContainer;
     if (!feedContainer) return;
 
     if (feedSection) feedSection.style.display = '';   // restore CSS flex layout
     if (feedMenu)  { feedMenu.style.display = '';  feedMenu.innerHTML = ''; }
     feedContainer.innerHTML = '<p class="feed-status-message">Loading collections…</p>';
 
-    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
     if (!token) {
         feedContainer.innerHTML = '<p class="feed-status-message">Please log in to view your collections.</p>';
         return;

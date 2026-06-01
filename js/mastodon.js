@@ -53,8 +53,22 @@ let accessToken = null;
                     accessToken = accountData.id;
                     await initializeMasto(baseURL, accessToken);
                 },
-                onFeedClick:   null,
-                onAuthorClick: (item) => loadMastodonFeed('user', null, item.author),
+                onFeedClick:   (item) => loadMastodonFeed('user', null, '@' + (item.mastodon?.acct || item.author_id || '')),
+                onAuthorClick: null,
+                statusActions: (item, _itemID, _itemUrl) => {
+                    const { statusId, isReblogged, isFavourited, isBookmarked, inThread } = item.mastodon || {};
+                    const threadsBtn = inThread
+                        ? `<button class="material-icons md-18 md-light" title="View thread" onclick="handleMastodonAction('${_heJs(statusId)}', 'thread')">dynamic_feed</button>`
+                        : '';
+                    return `
+                        <button class="material-icons md-18 md-light" title="Reply" onclick="handleMastodonAction('${_heJs(statusId)}', 'reply', this.parentElement)">reply</button>
+                        <button class="material-icons md-18 md-light${isReblogged ? ' action-active' : ''}" title="Boost" onclick="handleMastodonAction('${_heJs(statusId)}', 'boost', this)">autorenew</button>
+                        <button class="material-icons md-18 md-light${isFavourited ? ' action-active' : ''}" title="Favourite" onclick="handleMastodonAction('${_heJs(statusId)}', 'favorite', this)">favorite</button>
+                        <button class="material-icons md-18 md-light${isBookmarked ? ' action-active' : ''}" title="Bookmark" onclick="handleMastodonAction('${_heJs(statusId)}', 'bookmark', this)">bookmarks</button>
+                        ${threadsBtn}
+                        <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${_heJs(_itemUrl)}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+                    `;
+                },
                 feedFunctions: {
                     'Post':          () => openLeftInterface(mastodonStatusForm()),
                     'Following':     loadMastodonFeed.bind(null, 'home', null),
@@ -81,7 +95,7 @@ let accessToken = null;
     window.CList.publishers = window.CList.publishers || {};
     window.CList.publishers['Mastodon'] = {
         publish: async (accountData, title, content, refs) => {
-            const responseDiv = document.getElementById('post-result');
+            const responseDiv = window.CList.ui.view.postResult;
             const cleanContent = removeHtml(content);
             const mastodonRefs = (refs || []).filter(r => r.replyToken?.type === 'Mastodon');
             const replyToId = mastodonRefs[0]?.replyToken?.statusId || null;
@@ -316,7 +330,7 @@ async function loadMastodonFeed(type, pageUrl = null,typevalue = null) {
 console.log("baseURL "+baseURL+" accessRoken "+accessToken+" and Loading feed type "+type);
   //  const accessToken = document.getElementById('accessToken').value;
   //  const baseURL = document.getElementById('baseURL').value;
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
 
     if (!accessToken || !baseURL) {
         console.error('Error: Access token or baseURL is missing');
@@ -432,34 +446,21 @@ async function getMastodonFeed (url,type,feedContainer) {
 // Given a feed defined by 'data' consisting of a number of individual 'status' items
 // Display each status and then add a 'Next Page' button
 
-function displayMastodonFeed(data,type,page,nextPageUrl,feedContainer,typevalue) {
-
-    if (page ===1) { feedContainer.appendChild(createFeedHeader(type,typevalue)); }  // Header
-
-    const summary = document.createElement("div");      // Summary container, if desired
-    summary.id = "feed-summary";
-    feedContainer.appendChild(summary);
-
-    for (const status of data) {                         // Statuses
-        // Create the Status Box and append it immediately
-        const statusBox = document.createElement('div');
-        statusBox.classList.add('status-box');  
-        feedContainer.appendChild(statusBox);
-
-        // Update the status box content asynchronously
-        if (status.reblog) {
+async function displayMastodonFeed(data, type, page, nextPageUrl, feedContainer, typevalue) {
+    await window.CList.ui.renderFeed(data, feedContainer, {
+        normalize: (status) => {
             const a = status.account;
-            displayMastodonPost(status.reblog, statusBox,
-                `Reblogged by <a href="#" onclick="loadMastodonFeed('user',null,'@${a.acct}');return false;">${a.display_name}</a> (@${a.acct}):`);
-        } else {
-            displayMastodonPost(status, statusBox);
-        }
-    }
-
-                                                         // Next Button
-
-    renderMastodonNextPageButton(feedContainer, nextPageUrl, url => loadMastodonFeed(type, url));
-    window.checkAnnotationsBatch?.();
+            const reblogHeader = status.reblog
+                ? `Reblogged by <a href="#" onclick="loadMastodonFeed('user',null,'@${_heJs(a.acct)}');return false;">${_he(a.display_name)}</a> (@${_he(a.acct)}):`
+                : null;
+            return normalizeMastodonPost(status.reblog || status, reblogHeader);
+        },
+        title:        type,
+        typevalue,
+        append:       page > 1,
+        onLoadMore:   nextPageUrl ? () => loadMastodonFeed(type, nextPageUrl) : null,
+        loadMoreBtnId: 'nextPageButton',
+    });
 }
 
 
@@ -467,7 +468,7 @@ function displayMastodonFeed(data,type,page,nextPageUrl,feedContainer,typevalue)
 // ── Notifications ─────────────────────────────────────────────────────────────
 
 async function loadMastodonNotifications(pageUrl = null) {
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
     if (!accessToken || !baseURL) {
         showServiceError(feedContainer, 'Mastodon error', 'Feed client not initialized.',
             'Select a Mastodon account using the <strong>Find</strong> button.');
@@ -513,7 +514,7 @@ function displayMastodonNotifications(data, page, nextPageUrl, feedContainer) {
         const acct = notification.account?.acct || '';
         const name = notification.account?.display_name || acct;
         const label = typeLabels[notification.type] || notification.type;
-        const headerHtml = `<a href="#" onclick="loadMastodonFeed('user',null,'@${acct}');return false;">${name}</a> (@${acct}) ${label}`;
+        const headerHtml = `<a href="#" onclick="loadMastodonFeed('user',null,'@${_heJs(acct)}');return false;">${_he(name)}</a> (@${_he(acct)}) ${_he(label)}`;
 
         if (notification.status) {
             displayMastodonPost(notification.status, statusBox, headerHtml);
@@ -589,144 +590,76 @@ function validateUsername(username, instanceBase) {
 }
 
 
+async function normalizeMastodonPost(status, headerHtml = null) {
+    const acct    = status.account.acct;
+    const display = status.account.display_name || acct;
+
+    let translatedContent;
+    try {
+        translatedContent = await processTranslationWithTimeout(status.content);
+    } catch (e) {
+        console.error(`Error translating status ${status.id}:`, e);
+        translatedContent = status.content;
+    }
+
+    const authorLink = `<a href="#" onclick="loadMastodonFeed('user',null,'@${_heJs(acct)}');return false;" title="View User Feed">${_he(display)}</a> (@${_he(acct)}) wrote:`;
+    const titleHtml  = headerHtml
+        ? `<div class="reblog-info">${headerHtml}</div>${authorLink}`
+        : authorLink;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = translatedContent;
+    const plainText = (tempDiv.textContent || tempDiv.innerText || '').replace(/\s+/g, ' ').trim();
+
+    return {
+        service:      'Mastodon',
+        url:          status.url,
+        titleHtml,
+        title:        plainText.slice(0, 80),
+        desc:         plainText,
+        full_content: new SafeHtml(translatedContent),
+        feed:         display,
+        author:       null,
+        author_id:    acct,
+        date:         status.created_at,
+        images:       getMastodonImageAttachments(status),
+        guid:         status.url,
+        replyToken:   { type: 'Mastodon', statusId: status.id },
+        mastodon: {
+            acct,
+            statusId:     status.id,
+            isReblogged:  !!status.reblogged,
+            isFavourited: !!status.favourited,
+            isBookmarked: !!status.bookmarked,
+            inThread:     !!(status.in_reply_to_id || status.replies_count > 0),
+        },
+    };
+}
+
     // Display a Mastodon Post inside feedContainer
 
 async function displayMastodonPost(status, statusBox, headerHtml) {
+    const item = await normalizeMastodonPost(status, headerHtml || null);
+    const el   = makeListing(item);
 
-        // Create the status content div
-        const statusContent = document.createElement('div');
-        statusContent.classList.add('status-content');
-
-
-        // Translate content
-        try {       
-            translatedContent = await processTranslationWithTimeout(status.content);
-           // console.log('Translated Content:', translatedContent);
-        } catch (translationError) {
-            console.error(`Error translating status ${status.id}:`, translationError);
-            translatedContent = "[Translation failed]";
-        }                                        
-        //const translatedContent = await processTranslation(status.content);
-        //  const translatedContent = status.content;
-        //console.log(status);
-
-        if (headerHtml) {
-            const headerDiv = document.createElement('div');
-            headerDiv.classList.add('reblog-info');
-            headerDiv.innerHTML = headerHtml;
-            statusContent.appendChild(headerDiv);
+    // Rewire hashtag links to load internally instead of navigating away
+    el.querySelectorAll('a.mention.hashtag').forEach(link => {
+        const tag = link.getAttribute('href')?.split('/tags/')[1];
+        if (tag) {
+            link.setAttribute('href', '#');
+            link.removeAttribute('target');
+            link.addEventListener('click', (e) => { e.preventDefault(); loadMastodonFeed('hashtag', null, tag); });
         }
+    });
 
+    // Shorten long link display text
+    el.querySelectorAll('a').forEach(link => {
+        const text = link.textContent.trim();
+        if (text.length > 30) { link.title = text; link.textContent = text.substring(0, 27) + '...'; }
+    });
 
-
-        // Create the post-specific content div
-        const statusSpecific = document.createElement('div');
-        statusSpecific.classList.add('statusSpecific');
-        statusSpecific.id = `${status.id}`;
-        statusSpecific.innerHTML = `
-            <p><a href="#" onclick="loadMastodonFeed('user',null,'@${status.account.acct}'); return false;" title='View User Thread';>${status.account.display_name}</a> (@${status.account.acct}) wrote: 
-            ${translatedContent}
-        `;
-        statusContent.appendChild(statusSpecific);
-
-        // Rewire hashtag links to load the hashtag feed internally
-        statusSpecific.querySelectorAll('a.mention.hashtag').forEach(link => {
-            const tag = link.getAttribute('href')?.split('/tags/')[1];
-            if (tag) {
-                link.setAttribute('href', '#');
-                link.removeAttribute('target');
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    loadMastodonFeed('hashtag', null, tag);
-                });
-            }
-        });
-
-        // Images & media
-        const images = getMastodonImageAttachments(status);
-        if (images.length > 0) {
-            const statusImages = document.createElement('div');
-            statusImages.classList.add('status-images-container');
-            // Loop through the images and log their url and description
-            images.forEach(image => {
-                const imageItem = document.createElement('div');
-                imageItem.classList.add('image-item');
-                imageItem.innerHTML = `
-                <a href="${image.url}" target="_blank">
-                    <img src="${image.preview_url}" alt="${image.description || 'Image'}"/>
-                </a>
-                `;
-                console.log(`URL: ${image.url}`);
-                console.log(`Description: ${image.description}`);
-                statusImages.appendChild(imageItem);
-            });
-            statusContent.appendChild(statusImages);
-        }
-
-        // Create reference
-        const _mEl = document.createElement('div');
-        _mEl.innerHTML = status.content;
-        statusSpecific.reference = {
-            service:     'Mastodon',
-            author_name: status.account.display_name,
-            author_id:   status.account.acct,
-            feed:        status.account.acct,
-            url:         status.url,
-            title:       'Mastodon',
-            created_at:  status.created_at,
-            id:          status.id,
-            summary:     (_mEl.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140),
-            replyToken:  { type: 'Mastodon', statusId: status.id },
-        };
-
-        console.log(statusSpecific);
-
-        // Determine whether the status is in a thread (ie., a value for in_reply_to_id or for replies_count)
-        let threadsButton;
-        if (status.in_reply_to_id || status.replies_count > 0) {
-            threadsButton = `<button class="material-icons md-18 md-light" title="View thread" onClick="handleMastodonAction('${status.id}', 'thread')">dynamic_feed</button>`; }
-        else { threadsButton = ``; }
-        
-
-        // Create the action buttons div below the status
-        const actionButtons = document.createElement('div');
-        actionButtons.classList.add('status-actions');
-        actionButtons.innerHTML = `
-            <button class="material-icons md-18 md-light" title="Reply" onClick="handleMastodonAction('${status.id}', 'reply', this.parentElement)">reply</button>
-            <button class="material-icons md-18 md-light${status.reblogged ? ' action-active' : ''}" title="Boost" onClick="handleMastodonAction('${status.id}', 'boost', this)">autorenew</button>
-            <button class="material-icons md-18 md-light${status.favourited ? ' action-active' : ''}" title="Favourite" onClick="handleMastodonAction('${status.id}', 'favorite', this)">favorite</button>
-            <button class="material-icons md-18 md-light${status.bookmarked ? ' action-active' : ''}" title="Bookmark" onClick="handleMastodonAction('${status.id}', 'bookmark', this)">bookmarks</button>
-            ${threadsButton}
-            <button class="material-icons md-18 md-light" title="Open in browser" onClick="window.open('${status.url}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>
-            <button class="clist-action-btn" id="collect-btn-${status.id}" onclick="collectItem('${status.id}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
-            <button class="clist-action-btn" onclick="shareToChat('${status.id}')" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
-        `;
-        statusContent.appendChild(actionButtons);
-
-        // Create the clist buttons div to the right of the status
-        const clistButtons = document.createElement('div');
-        clistButtons.classList.add('clist-actions');
-        clistButtons.innerHTML = `
-            <button class="clist-action-btn" id="anno-btn-${status.id}" onclick="clistAnnotate('${status.id}');" title="Write about this"><span class="material-icons md-18 md-light">arrow_forward</span></button>
-        `;
-
-        // Append content and actions to the status box
-        statusBox.appendChild(statusContent);
-        statusBox.appendChild(clistButtons);
-
-
-        // Shorten the displayed text for links
-        const links = statusContent.querySelectorAll('a');  // Find all <a> tags
-        links.forEach((link) => {
-            const originalText = link.textContent.trim();
-            if (originalText.length > 30) {
-                if (originalText.length > 30) {
-                    link.title = originalText;  // Set full link text as title (tooltip)
-                    link.textContent = `${originalText.substring(0, 27)}...`;  // Shorten text
-                }
-            }
-        });
-    }
+    statusBox.replaceWith(el);
+}
 
 
     // Get Images from a Mastodon Status
@@ -955,17 +888,17 @@ async function mastodonOAuthStart(title, username, permissions) {
 // On page load, check whether we're returning from a Mastodon OAuth callback.
 // callback.html stores the result in localStorage; we pick it up here and save to kvstore.
 document.addEventListener('DOMContentLoaded', async function () {
-    const raw = localStorage.getItem('oauth_callback_result');
+    const raw = localStorage.getItem(window.CList.keys.OAUTH_CALLBACK_RESULT);
     if (!raw) return;
     let data;
     try { data = JSON.parse(raw); } catch (e) { console.error('Bad oauth_callback_result', e); return; }
     if (data.providerType !== 'Mastodon') return;
-    localStorage.removeItem('oauth_callback_result');
+    localStorage.removeItem(window.CList.keys.OAUTH_CALLBACK_RESULT);
     await saveMastodonAccount(data.extra.title || data.accountKey, data.accountKey, data.accessToken, data.extra.permissions);
 });
 
 async function saveMastodonAccount(title, username, accessToken, permissions) {
-    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
     if (!token) { showStatusMessage('Please log in to kvstore before authorizing Mastodon.'); return; }
 
     const encKey = await getEncKey(window.CList.config.flaskSiteUrl);

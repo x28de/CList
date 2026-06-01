@@ -213,7 +213,7 @@ function playChat() {
   }
 
   // Now that the P2P system is initialized, adopt the global username.
-  let usernameCookie = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+  let usernameCookie = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.USERNAME);
   if (!usernameCookie) { usernameCookie = 'Anonymous'; }
   setUsername(usernameCookie);
 
@@ -268,7 +268,7 @@ function initializeP2PSystem() {
  * has no DID the globals stay null and everything works without DID features.
  */
 async function initializeDid() {
-  const user = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+  const user = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.USERNAME);
   if (!user) return;
   try {
     const res = await fetch(`${window.CList.config.flaskSiteUrl}/users/${user}/did.json`);
@@ -628,7 +628,7 @@ function advertiseDiscussion() {
   console.log(`Advertising discussion: ${discussionName} (ID: ${peerId}, public: ${isPublic})`);
 
   // Post discussion details to the external API endpoint.
-  const _advertiseToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+  const _advertiseToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
   fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -671,7 +671,7 @@ function startHeartbeat() {
   stopHeartbeat();
 
   heartbeatInterval = setInterval(() => {
-    const _heartbeatToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const _heartbeatToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
     fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -713,7 +713,7 @@ function stopHeartbeat() {
  * Fetches available discussions from the server and populates the discussion list.
  */
 function refreshDiscussions() {
-  const _refreshToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+  const _refreshToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
   fetch(API_URL, {
     method: 'GET',
     headers: {
@@ -777,7 +777,7 @@ function endDiscussion() {
     return;
   }
 
-  const _endToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+  const _endToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
   fetch(API_URL, {
     method: 'DELETE',
     headers: {
@@ -874,7 +874,7 @@ function findEtherpadLink(content, sender) {
 // for users who have not generated an identity key.
 
 async function loadIdentityKey() {
-  const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+  const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
   const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
   if (!token || !encKey) return null;
   try {

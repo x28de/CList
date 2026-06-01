@@ -35,7 +35,7 @@
 async function duckduckgoSearch(q) {
 
     const URL = `https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&t=h_&format=json`;
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
     const dateString = new Date().toISOString();
     let data;
     try {

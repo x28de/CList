@@ -256,7 +256,7 @@ window.openAnnotationEditor = function(itemId) {
     pushReference({ ...el.reference });
 
     // Clear the active editor content
-    const textarea = document.getElementById('text-column');
+    const textarea = window.CList.ui.view.textColumn;
     if (textarea) {
         textarea.value = '';
         textarea.setSelectionRange(0, 0);
@@ -298,7 +298,7 @@ window.openAnnotationEditor = function(itemId) {
                 return null;
             }
 
-            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
+            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || '';
             if (!token) {
                 showStatusMessage('Not logged in — cannot post annotation.');
                 return null;
@@ -364,7 +364,7 @@ window.openAnnotationEditor = function(itemId) {
             }
 
             // Convergent: append a link row per item directly into #post-result
-            const resultDiv = document.getElementById('post-result');
+            const resultDiv = window.CList.ui.view.postResult;
             if (resultDiv) {
                 refs.forEach(ref => {
                     if (!ref.url || ref.url === '(no URL provided)') return;
@@ -385,7 +385,7 @@ async function _offerCollectAfterAnnotation(ref) {
     const itemId = ref.statusID || ref.id;
     if (!itemId) return;
 
-    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || '';
     if (!token) return;
 
     try {
@@ -409,7 +409,7 @@ async function _offerCollectAfterAnnotation(ref) {
     // setTimeout(0) lets publish.js complete its synchronous DOM writes to #post-result
     // before we append the collect prompt below them
     setTimeout(() => {
-        const resultDiv = document.getElementById('post-result');
+        const resultDiv = window.CList.ui.view.postResult;
         if (!resultDiv || !document.body.contains(resultDiv)) return;
 
         const prompt = document.createElement('div');
@@ -481,7 +481,7 @@ async function _getFederatedAnnotationAccounts() {
         return _federatedCache;
     }
 
-    const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
     const encKey = token ? await getEncKey(window.CList.config.flaskSiteUrl) : null;
     if (!encKey) { _federatedCache = []; return []; }
 
@@ -545,7 +545,7 @@ async function _getFollowedDids() {
     if (_followedDidsCache && Date.now() - _followedDidsCacheTime < _FEDERATED_TTL) {
         return _followedDidsCache;
     }
-    const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const token  = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
     const encKey = token ? await getEncKey(window.CList.config.flaskSiteUrl) : null;
     if (!encKey) { _followedDidsCache = new Set(); return _followedDidsCache; }
     let kvs = [];
@@ -679,7 +679,7 @@ window.checkAnnotationsBatch = async function() {
 
         // Inject "Follow feed author" buttons for items whose feed advertises a DID.
         // Runs async after annotation counts so it doesn't block the main check.
-        const batchToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
+        const batchToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || '';
         if (batchToken) {
             const batchMyKvDomain = (window.CList.config.flaskSiteUrl || '').replace(/^https?:\/\//, '');
             const batchMyDid = window.CList.state.username
@@ -1121,7 +1121,7 @@ function _buildAnnotationItem(anno, options = {}) {
 window.showAnnotationsForItem = async function(itemId) {
     const el = document.getElementById(itemId);
     if (!el || !el.reference) return;
-    const fc = document.getElementById('feed-container');
+    const fc = window.CList.ui.view.feedContainer;
     if (!fc) return;
 
     try {
@@ -1129,7 +1129,7 @@ window.showAnnotationsForItem = async function(itemId) {
     const guid = el.reference.guid;
     const checkUrls = guid && guid !== url ? [url, guid] : [url];
 
-    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || '';
     const annotateAccounts = (window.CList.accounts || [])
         .map(a => parseAccountValue(a))
         .filter(d => d && d.type === 'Annotate' && d.instance);
@@ -1285,7 +1285,7 @@ window.showAnnotationsForItem = async function(itemId) {
 };
 
 window.closeAnnotationThread = function() {
-    const fc = document.getElementById('feed-container');
+    const fc = window.CList.ui.view.feedContainer;
     if (_savedFeedContent) {
         while (fc.firstChild) fc.removeChild(fc.firstChild);
         fc.appendChild(_savedFeedContent);
@@ -1332,7 +1332,7 @@ async function _fetchAnnotationFeedForAccount(acct, since) {
 
 // Show a feed of recent annotations from self + all followed users.
 window.showAllAnnotations = async function() {
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
     feedContainer.innerHTML = '<p class="feed-status-message">Loading annotations…</p>';
 
     let allAccounts;
@@ -1363,7 +1363,7 @@ window.showAllAnnotations = async function() {
         feedContainer.innerHTML = '<p class="feed-status-message">No annotations in the last 14 days.</p>';
         return;
     }
-    const token        = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || '';
+    const token        = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || '';
     const myKvDomain   = (window.CList.config.flaskSiteUrl || '').replace(/^https?:\/\//, '');
     const myDid        = window.CList.state.username
         ? `did:web:${myKvDomain}:users:${window.CList.state.username}` : '';

@@ -132,7 +132,7 @@ async function generateTemplateContent() {
         </div>
     `;
 
-    const optionsDiv = document.getElementById('load-options');
+    const optionsDiv = window.CList.ui.view.loadOptions;
     if (optionsDiv) {
         optionsDiv.innerHTML = '';
         optionsDiv.appendChild(formDiv);
@@ -156,14 +156,14 @@ async function generateTemplateContent() {
             try {
                 const template = await generateNewTemplateFromChatGPT(finalTemplateType, outputFormat);
                 const extractedContent = extractCodeContent(template);
-                document.getElementById('loading-indicator').style.display = 'none';
+                window.CList.ui.view.loadingIndicator.style.display = 'none';
                 if (formDiv.parentNode) formDiv.parentNode.removeChild(formDiv);
                 resolve({
                     type: outputFormat === 'html' ? 'text/html' : 'text/plain',
                     value: extractedContent
                 });
             } catch (error) {
-                document.getElementById('loading-indicator').style.display = 'none';
+                window.CList.ui.view.loadingIndicator.style.display = 'none';
                 const msg = document.createElement('p');
                 msg.className = 'template-error feed-status-message';
                 msg.textContent = `Could not generate template: ${error.message}`;

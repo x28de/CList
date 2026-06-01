@@ -25,7 +25,7 @@ window.CList.schemas['Blogger'] = {
     window.CList.publishers = window.CList.publishers || {};
     window.CList.publishers['Blogger'] = {
         publish: async (accountData, title, content) => {
-            const responseDiv = document.getElementById('post-result');
+            const responseDiv = window.CList.ui.view.postResult;
             const plainTitle = removeHtml(title).trim()
                 || content.replace(/<[^>]+>/g, '').trim().substring(0, 70).replace(/\s\S*$/, '') + '…';
             return await publishBloggerPost(

@@ -62,8 +62,6 @@ let endX = 0;
 
 function openLeftPane() {
     const isMobile = window.innerWidth <= 768; // Define mobile breakpoint
-    const leftPane = document.getElementById('left-pane');
-    const mainWindow = document.getElementById('main-window');
 
     const paneWidth = isMobile ? '100vw' : '300px';
 
@@ -90,8 +88,6 @@ function openLeftPane() {
 
 function openRightPane() {
     const isMobile = window.innerWidth <= 768; // Define mobile breakpoint
-    const rightPane = document.getElementById('right-pane');
-    const mainWindow = document.getElementById('main-window');
 
     // Calculate the new right border position
     const paneWidth = isMobile ? '100vw' : '300px';
@@ -111,9 +107,6 @@ function openRightPane() {
 
 
 function closeLeftPane() {
-    const leftPane = document.getElementById('left-pane');
-    const mainWindow = document.getElementById('main-window');
-
     leftPane.classList.remove('pane-open'); // disable wrap before collapsing
     leftPane.style.width = '0';
     mainWindow.style.left = '0';
@@ -122,9 +115,6 @@ function closeLeftPane() {
 }
 
 function closeRightPane() {
-    const rightPane = document.getElementById('right-pane');
-    const mainWindow = document.getElementById('main-window');
-
     // Reset the left pane width and visibility
     rightPane.style.width = '0'; // Collapse the left pane
 
@@ -201,72 +191,10 @@ function snapPanes(direction) {
 
 // Set up the feed menus differently for different services
 
-
-    function createFeedHeader(type, typevalue) {
-
-        // Map feed types to their titles
-        const titles = {
-            home: "Home Feed",
-            local: "Local Feed",
-            bookmarks: "Bookmarks",
-            hashtag: "Hashtag Feed",
-            user: "User Feed",
-            Notifications: "Notifications",
-        };
-
-        // Create the container div
-        const feedHeaderDiv = document.createElement("div");
-        feedHeaderDiv.className = "feed-header";
-
-
-        const title = titles[type] || type;
-        const heading = document.createElement("h2");
-        heading.textContent = title;
-
-        // Optional description — show specific value for hashtag and user feeds
-        let description_text = `Viewing ${title.toLowerCase()}.`;
-        if (type === 'hashtag' && typevalue) {
-            description_text = `Viewing hashtag feed for #${typevalue}.`;
-        } else if ((type === 'user' || type === 'username') && typevalue) {
-            description_text = `Viewing posts by ${typevalue}.`;
-        }
-
-        // Optional description
-        const description = document.createElement("p");
-        description.textContent = description_text;
-
-        // Append heading and description to the div
-        feedHeaderDiv.appendChild(heading);
-        feedHeaderDiv.appendChild(description);
-
-        // Feed action buttons
-        if (type === 'thread') {
-            const actions = document.createElement("p");
-            actions.className = "clist-actions";
-            actions.innerHTML = `
-                <button class="material-icons md-18 md-light" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
-                <button class="material-icons md-18 md-light" title="Load thread into editor" onClick="handleMastodonAction('thread', 'load',this.parentElement.parentElement)">arrow_right</button>
-                `;
-            feedHeaderDiv.appendChild(actions);
-        } else if (type === 'Bluesky Thread') {
-            const actions = document.createElement("p");
-            actions.className = "clist-actions";
-            actions.innerHTML = `
-                <button class="material-icons md-18 md-light" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
-                <button class="material-icons md-18 md-light" title="Load into editor" onClick="loadContentToEditor('feed-container')">arrow_right</button>
-                `;
-            feedHeaderDiv.appendChild(actions);
-        }
-        
-
-        return feedHeaderDiv;
-        
-    }
-
     function setupFeedButtons(instanceType) {
 
         // Find the place to put the buttons
-        const buttonsContainer = document.getElementById('feed-menu');
+        const buttonsContainer = window.CList.ui.view.feedMenu;
         if (!buttonsContainer) {
             console.error('Error: The element with ID "feed-menu" does not exist, so there is no place to put the feed buttons.');
             showStatusMessage('Error loading feed — feed menu element not found.');
@@ -502,7 +430,7 @@ function showModal(content) {
 }
 
 function showLoader() {
-    const loader = document.getElementById('loading-indicator');
+    const loader = window.CList.ui.view.loadingIndicator;
     if (loader) {
       loader.style.display = 'flex'; // Change display to flex
       // Force reflow

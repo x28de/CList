@@ -88,7 +88,7 @@ Options for the write pane open in **`#right-pane`**, which slides in from the r
 
 ### Status pane — `#statusPane`
 
-A floating `div` at the bottom of the screen for transient messages. Written to by `showStatusMessage(text)` in `utilities.js`; auto-hides after 3 seconds.
+A floating `div` at the bottom of the screen for transient messages. Written to by `showStatusMessage(text)` in `ui.js`; auto-hides after 3 seconds.
 
 ---
 
@@ -264,7 +264,7 @@ Several UI elements are hidden or shown depending on the user's registration and
 
 - `updateUIVisibility()` calls `isRegistered()`, `hasReadAccount()`, `hasPostAccount()`, and `hasAIAccount()` (all in `kvstore.js`) to set `element.style.display` directly.
 - `.clist-action-btn` elements are created dynamically inside feed listings (in `reader.js`), so they are toggled via a CSS rule keyed on the `user-registered` body class rather than by direct element lookup.
-- The Refs button is shown the first time `createReference()` in `tinymce.js` successfully adds a non-duplicate reference.
+- The Refs button is shown the first time `pushReference()` in `references.js` successfully adds a non-duplicate reference (called indirectly via `createReference()` in `tinymce.js`).
 - `populateLoadOptions()` in `editors.js` checks `handler.visible()` before rendering each load-panel entry, so Collab and Generate template appear only when their conditions are met.
 
 ---

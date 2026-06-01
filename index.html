@@ -38,9 +38,16 @@
             publishers: {},
             savers:     [],
             loaders:    [],
-            ui:         {}
+            ui:         {},
+            keys: {
+                ACCESS_TOKEN:          'access_token',
+                USERNAME:              'username',
+                TOKEN_EXPIRES:         'token_expires',
+                OAUTH_CALLBACK_RESULT: 'oauth_callback_result',
+                KVSTORE_URL:           'clist_kvstore_url',
+            }
         };
-        const _savedKvUrl = localStorage.getItem('clist_kvstore_url');
+        const _savedKvUrl = localStorage.getItem(window.CList.keys.KVSTORE_URL);
         if (_savedKvUrl) window.CList.config.flaskSiteUrl = _savedKvUrl;
         if (window._launcherConfig && window._launcherConfig.kvstoreUrl)
             window.CList.config.flaskSiteUrl = window._launcherConfig.kvstoreUrl;
@@ -304,6 +311,7 @@
 
   <script src="js/tour.js" defer></script>          <!-- Onboarding tour -->
   <script src="js/utilities.js" defer></script>    <!-- Utility functions -->
+  <script src="js/ui.js" defer></script>          <!-- CList.ui factory functions -->
   <script src="js/references.js" defer></script>  <!-- Reference list for convergence -->
   <script src="js/crypto_utils.js" defer></script>
   <script src="js/kvstore.js" defer></script>     <!-- Loads usere and account data --> 

@@ -159,8 +159,8 @@ const _interfaceSteps = [
 ];
 
 function _restorePanes() {
-    const rp = document.getElementById('read-pane');
-    const wp = document.getElementById('write-pane');
+    const rp = window.CList.ui.view.readPane;
+    const wp = window.CList.ui.view.writePaneEl;
     if (rp) rp.style.flex = '0.5';
     if (wp) wp.style.flex = '0.5';
 }

@@ -90,7 +90,7 @@ Services register reader handlers via `window.CList.readers`. See `feed-structur
 
 ### Writing and editing
 
-The write pane hosts a pluggable set of editors. Active editors are registered in `window.editorHandlers`, each providing `initialize`, `getContent`, `loadContent`, `setFocus`, `draftKey`, and optional `destroy` methods. The editor chooser (right pane) switches between editors while preserving draft content. Auto-save writes draft content to localStorage on each change.
+The write pane hosts a pluggable set of editors. Active editors are registered in `editorHandlers` (a module-level object in `editors.js`), each providing `initialize`, `getContent`, `loadContent`, `setFocus`, `draftKey`, and optional `destroy` methods. The editor chooser (right pane) switches between editors while preserving draft content. Auto-save writes draft content to localStorage on each change.
 
 See `editors_structure.md` for the full contract, the `pendingContent` hand-off flow, and how load and save handlers interact with the editor.
 
@@ -193,14 +193,21 @@ All shared state and registries live under a single `window.CList` object, decla
 ```js
 window.CList = {
     config:     { flaskSiteUrl: 'https://kvstore.mooc.ca' },  // mutable; overridden by localStorage or launcher
-    state:      { username: 'none' },                          // updated on login/logout by kvstore.js
+    state:      { username: 'none', references: [] },          // updated on login/logout; references cleared on new composition
     accounts:   [],                                            // decrypted account list; populated after login
     schemas:    {},                                            // keyed by service type → account form definition
     readers:    {},                                            // keyed by service type → reader handler
     publishers: {},                                            // keyed by service type → publish handler
     savers:     [],                                            // ordered array of save-to destinations
     loaders:    [],                                            // ordered array of load-from sources
-    ui:         {},                                            // reserved for future DOM helpers
+    ui:         {},                                            // DOM helpers and view references (ui.js)
+    keys: {
+        ACCESS_TOKEN:          'access_token',          // kvstore auth token (site-specific cookie)
+        USERNAME:              'username',              // logged-in username (site-specific cookie)
+        TOKEN_EXPIRES:         'token_expires',         // token expiry timestamp (site-specific cookie)
+        OAUTH_CALLBACK_RESULT: 'oauth_callback_result', // OAuth popup result (localStorage)
+        KVSTORE_URL:           'clist_kvstore_url',     // selected kvstore server URL (localStorage)
+    },
 };
 ```
 
@@ -216,6 +223,8 @@ window.CList = {
 ### state
 
 `state.username` is the logged-in username string, or `'none'` when no user is logged in. It is set by `kvstore.js` from the site-specific cookie on login and cleared to `''` on logout.
+
+`state.references` is the array of source items loaded into the editor for the current composition — feed items, annotations, or collections the user has chosen to respond to. Managed by `references.js` via `pushReference()`, `clearReferences()`, and `getReferences()`. Used by `publish.js` to pass reply context to publishers (Mastodon, Bluesky) and trigger webmentions.
 
 ### accounts
 
@@ -260,7 +269,7 @@ See `adding-a-service.md` for the full pattern and `publish_structure.md` for th
 
 ## Error handling
 
-All user-visible errors go through two helpers in `utilities.js`:
+All user-visible errors go through two helpers in `ui.js` (aliased to globals at the bottom of that file):
 
 - **`showServiceError(container, title, message, actionHtml?)`** — persistent red banner for hard failures (feed loads, API errors, missing credentials).
 - **`showStatusMessage(text)`** — transient message in `#statusPane`, auto-hides after 3 seconds. For action feedback, validation, and background results.

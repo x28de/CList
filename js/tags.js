@@ -6,7 +6,7 @@
     window.clearWriteTags = _clearAll;
 
     function _init() {
-        const container = document.getElementById('write-tags');
+        const container = window.CList.ui.view.writeTags;
         if (!container) return;
         _render(container);
     }
@@ -73,7 +73,7 @@
     async function _addTag(name) {
         if (!name || _selected.includes(name)) return;
         _selected.push(name);
-        _render(document.getElementById('write-tags'));
+        _render(window.CList.ui.view.writeTags);
         _closeDropdown();
         if (_collections !== null && !_collections.some(n => n.toLowerCase() === name.toLowerCase()))
             _offerCreateCollection(name);
@@ -82,7 +82,7 @@
 
     function _offerCreateCollection(name) {
         document.getElementById('write-tags-col-offer')?.remove();
-        const container = document.getElementById('write-tags');
+        const container = window.CList.ui.view.writeTags;
         if (!container) return;
         const offer = document.createElement('div');
         offer.id = 'write-tags-col-offer';
@@ -105,18 +105,18 @@
 
     function _removeTag(name) {
         _selected = _selected.filter(t => t !== name);
-        _render(document.getElementById('write-tags'));
+        _render(window.CList.ui.view.writeTags);
         requestAnimationFrame(() => document.getElementById('write-tag-input')?.focus());
     }
 
     function _clearAll() {
         _selected = [];
-        const container = document.getElementById('write-tags');
+        const container = window.CList.ui.view.writeTags;
         if (container) _render(container);
     }
 
     async function _fetchCollections() {
-        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
         if (!token) { _collections = []; return; }
         try {
             const resp = await fetch(`${window.CList.config.flaskSiteUrl}/get_kvs/`,
@@ -130,7 +130,7 @@
     }
 
     async function _createCollection(name) {
-        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
         if (!token) return;
         try {
             const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
@@ -151,7 +151,7 @@
 
     function _openDropdown() {
         _closeDropdown();
-        const container = document.getElementById('write-tags');
+        const container = window.CList.ui.view.writeTags;
         const input = document.getElementById('write-tag-input');
         if (!container || !input) return;
 

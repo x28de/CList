@@ -264,40 +264,6 @@ function withTimeout(promise, ms) {
 }
 
 
-// More subtle than an alert and doesn't interrupt the user
-function showStatusMessage(message) {
-    const statusPane = document.getElementById('statusPane');
-
-    if (!statusPane) {
-        console.error('Status pane element not found.');
-        return;
-    }
-
-    // Set the message and make the pane visible
-    statusPane.textContent = message;
-    statusPane.style.display = 'block';
-
-    // Hide the status pane after 10 seconds
-    setTimeout(() => {
-        statusPane.style.display = 'none';
-    }, 3000); // 10000ms = 10 seconds
-}
-
-
-
-// Render a structured error message into a container element.
-// title:      short service name, e.g. "Bluesky error"
-// message:    the error text (from caught exception or HTTP status)
-// actionHtml: optional HTML string with remediation advice / links
-function showServiceError(container, title, message, actionHtml = '') {
-    const msg = document.createElement('div');
-    msg.className = 'error-message';
-    msg.innerHTML = `<p><strong>${title}:</strong> ${message}</p>`
-        + (actionHtml ? `<p>${actionHtml}</p>` : '');
-    if (typeof container === 'string') container = document.getElementById(container);
-    if (container) container.appendChild(msg);
-}
-
 
 function callIfAvailable(functionName, ...args) {
     if (typeof window[functionName] === "function") {

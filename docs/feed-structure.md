@@ -16,7 +16,7 @@ The feed pane is `#feed-section`, which contains two children: `#feed-menu` and 
   └── #feed-container              — rendered feed items (see below)
 ```
 
-The buttons in `#feed-menu` are defined in each service's `feedFunctions` map (e.g. `window.MastodonFunctions`, `window.BlueskyFunctions`) and wired up by `setupFeedButtons(instanceType)` in `interface.js` when an account is selected.
+The buttons in `#feed-menu` are defined in each service's `feedFunctions` map (e.g. `window.CList.readers['Mastodon'].feedFunctions`) and wired up by `setupFeedButtons(instanceType)` in `interface.js` when an account is selected.
 
 ---
 
@@ -124,7 +124,7 @@ Services render items in one of two ways:
 
 **Direct DOM** (Mastodon, Bluesky) — each service builds its own DOM elements via `createElement` / `innerHTML` directly inside its display function.
 
-**`makeListing()`** (RSS, OPML, OASIS, DuckDuckGo, Google) — services populate a standard item object and pass it to `makeListing()` in `reader.js`, which builds the `div.status-box` and calls `readerHandlers[service].statusActions()` to get the action buttons as an HTML string.
+**`makeListing()`** (RSS, OPML, OASIS, DuckDuckGo, Google) — services populate a standard item object and pass it to `makeListing()` in `reader.js`, which builds the `div.status-box` and calls `window.CList.readers[service].statusActions()` to get the action buttons as an HTML string.
 
 ---
 
@@ -136,7 +136,7 @@ Services render items in one of two ways:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `service` | string | yes | Key into `readerHandlers` — determines which `statusActions()` is called |
+| `service` | string | yes | Key into `window.CList.readers` — determines which `statusActions()` is called |
 | `url` | string | yes | Canonical URL of the item — used to generate `itemID` via `createUniqueIdFromUrl()` |
 | `title` | string | yes | Plain text title. Escaped internally — **do not pre-escape.** |
 | `desc` | string | no | Plain text summary. Escaped internally — **do not pre-escape.** Truncated to `summaryLimit` if too long. |
@@ -194,7 +194,7 @@ If `desc` exceeds `summaryLimit` characters and is longer than `full_content`, `
 
 **Future recommendations (deferred):**
 
-1. **Move Mastodon and Bluesky action buttons into `readerHandlers[service].statusActions()`** — the same interface the search services use. This gives a single place to look up what actions a service supports without requiring a full `makeListing()` migration. Do this when already touching those files for another reason.
+1. **Move Mastodon and Bluesky action buttons into `window.CList.readers[service].statusActions()`** — the same interface the search services use. This gives a single place to look up what actions a service supports without requiring a full `makeListing()` migration. Do this when already touching those files for another reason.
 
 2. **Migrate Mastodon and Bluesky to `makeListing()`** — the right trigger is adding a cross-service feature that needs to work on every item regardless of service (e.g. CList-level bookmarks, save to reading list). At that point the item object format will need standardizing anyway, and the migration earns its keep. Not worth doing as pure cleanup.
 
@@ -382,4 +382,4 @@ The remaining structural gap is that Mastodon and Bluesky still build their feed
 1. **`div.clist-actions`** with `arrow_right` calling `loadContentToEditor(itemID)` — wires item into the write/publish flow.
 2. **`.reference` object** on `div#[item-id]` — populate all fields including `url` and `guid`. If the service has no alternate URL form, set `guid` equal to `url`.
 3. **`window.checkAnnotationsBatch?.()` call** at the end of the render function — enables annotation indicators for the new feed type.
-4. Follow the `makeListing()` + `readerHandlers` pattern. See the `makeListing()` field contract above for escaping rules and the `SafeHtml` requirement for `full_content`.
+4. Follow the `makeListing()` + `window.CList.readers` pattern. See the `makeListing()` field contract above for escaping rules and the `SafeHtml` requirement for `full_content`.

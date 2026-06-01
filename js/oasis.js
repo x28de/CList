@@ -33,7 +33,7 @@
 async function oasisSearch(query,start) {
 
 
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
     const dateString = new Date().toISOString();
 
     let proxyUrl = "https://www.downes.ca/cgi-bin/proxyp.cgi";

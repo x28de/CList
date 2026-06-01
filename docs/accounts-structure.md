@@ -20,10 +20,9 @@ The decrypted JSON has this shape:
     type:        string,   // service type — 'Mastodon', 'Bluesky', 'OPML', etc.
     instance:    string,   // account identifier used by runtime code (see below)
     title:       string,   // human-readable display name
-    permissions: string,   // permission flags: r=read, w=write, e=edit, s=summarize,
-                           //                   t=translate, g=generate, p=proxy
+    permissions: string,   // permission flags — see table below
     id:          string,   // credential (access token, app password, API key, etc.)
-                           // absent for types that have no credential (e.g. Proxyp)
+                           // absent for types that have no credential (e.g. Proxyp, Collab)
     // ...additional fields defined by the schema
 }
 ```
@@ -35,15 +34,30 @@ The decrypted JSON has this shape:
 - **`instanceFromKey: true`** — `instance` is automatically set equal to the kvstore `key` on save. This covers all types where the key IS the account identifier (e.g. `downes@mastodon.social`, `downes.bsky.social`, `https://example.com/feeds.opml`).
 - **`instanceFromKey: false`** — `instance` is an explicit field the user fills in, separate from the key. Used when the key and the API endpoint differ (currently: AI accounts, where the key is a project ID and `instance` is the API URL).
 
+### Permissions flags
+
+The `permissions` string is checked with `includes()`, so a single account can carry multiple flags (e.g. `'rw'` or `'rwe'`).
+
+| Flag | Checked by | Effect |
+|------|------------|--------|
+| `r`  | `reader.js` | Shown in the **Read** account list |
+| `w`  | `publish.js`, `kvstore.js` | Shown in the **Post** publish list; accepted as a kvstore write credential |
+| `p`  | `kvstore.js` | Marks a kvstore credential store account |
+| `e`  | `editors.js` | Shown as an available **Editor** (Etherpad, Collab) |
+| `t`  | `translate.js` | Used as the **Translation** service |
+| `g`  | `chatgpt.js` | Used as the **AI assistant** |
+| `z`  | `summarize.js` | Used as the **Summarize** service |
+| `s`  | `rss.js` | Marks an RSS relay / OPML subscription source |
+
 ---
 
 ## Schema definition
 
-Each service defines its schema at the top of its `.js` file by registering into `window.accountSchemas`:
+Each service defines its schema at the top of its `.js` file by registering into `window.CList.schemas`:
 
 ```js
-window.accountSchemas = window.accountSchemas || {};
-window.accountSchemas['TypeName'] = {
+window.CList.schemas = window.CList.schemas || {};
+window.CList.schemas['TypeName'] = {
     type:            string,    // must match the type stored in instanceData
     instanceFromKey: boolean,   // true: instance = kvstore key on save
     kvKey: {
@@ -85,13 +99,18 @@ New account creation for Mastodon is special-cased in `selectAccountType()` in `
 
 | File | Type | kvKey | editable fields | non-editable fields |
 |------|------|-------|-----------------|---------------------|
-| `mastodon.js` | Mastodon | Username (`you@mastodon.social`) | title, permissions | id (oauth) |
+| `mastodon.js` | Mastodon | Username (`you@mastodon.social`) | title, permissions, maxlength | id (oauth) |
 | `bluesky.js` | Bluesky | Username (`you.bsky.social`) | title, permissions, id | — |
 | `opml.js` | OPML | OPML URL | title, permissions, id (API endpoint) | — |
+| `rss.js` | OPML2JSON | Service URL | title, permissions | — (no id; `s` flag) |
+| `rss.js` | RSS | Collection name | title, permissions | — (no id; `r` flag) |
 | `wordpress.js` | WordPress | Username (`you@site`) | title, permissions, id (API key) | — |
 | `blogger.js` | Blogger | Blog ID | title, permissions, id (client ID) | — |
 | `etherpad.js` | Etherpad | Etherpad API URL | title, permissions, id (proxy URL) | — |
-| `chatgpt.js` | AI | Project | title, instance (API URL), permissions, id (API key) | — |
+| `collab.js` | Collab | WebSocket URL (`wss://…`) | title, permissions | — (no id; `e` flag) |
+| `chatgpt.js` | AI | Project ID | title, instance (API URL), permissions, id (API key) | — |
+| `annotate.js` | Annotate | Store URL | title, permissions | — |
+| `hypothesis.js` | Hypothesis | Server URL | title, username, apiKey, permissions | — |
 | `kvstore.js` | Proxyp | Proxy URL | title, permissions | — (no id field) |
 
 AI accounts have `instanceFromKey: false` — `instance` (the API URL) is an explicit editable field, separate from the project key.
@@ -118,9 +137,25 @@ The accounts array is populated by `getAccounts(flaskSiteUrl)` in `kvstore.js`, 
 
 Each service file must follow these conventions consistently across all services.
 
-### Feed buttons
+### Reader handler shape
 
-Feed action buttons are registered via `window.readerHandlers['Type']` with an `initialize` function and a `feedFunctions` object. They are rendered automatically by `setupFeedButtons()` in `interface.js` — no manual button HTML is needed.
+Reader handlers are registered in `window.CList.readers` and dispatched to by `reader.js` without any service-specific branching:
+
+```js
+(function () {
+    window.CList.readers['MyService'] = {
+        initialize:    async (accountData) => { … },  // called when account is selected
+        feedFunctions: { 'Timeline': fn, … },         // rendered as buttons in #feed-menu
+        onFeedClick:   (item) => { … },               // null = feed name not clickable
+        onAuthorClick: (item) => { … },               // null = author name not clickable
+        statusActions: (item, itemID, itemUrl) => htmlString,  // per-item action buttons
+    };
+})();
+```
+
+`statusActions` returns an HTML string of **service-specific** buttons only. `makeListing()` always appends the collect and share buttons after these — do not include them.
+
+See `docs/adding-a-service.md` for the complete pattern including the normalization function and `renderFeed` usage.
 
 ### Status messages — `.feed-status-message`
 
@@ -138,11 +173,11 @@ This class (defined in `reader.css`) adds margin, padding, a light border, and r
 
 1. In the service's `.js` file, register a schema:
    ```js
-   window.accountSchemas = window.accountSchemas || {};
-   window.accountSchemas['MyType'] = { type, instanceFromKey, kvKey, fields };
+   window.CList.schemas = window.CList.schemas || {};
+   window.CList.schemas['MyType'] = { type, instanceFromKey, kvKey, fields };
    ```
 2. Add a button for the new type in `showTypePicker()` in `flasker.html`.
-3. Implement the service handler (`initialize`, `feedFunctions`, `statusActions`) and register it in `window.readerHandlers['MyType']` if it supports reading.
+3. Implement the service handler and register it in `window.CList.readers['MyType']` if it supports reading.
 4. Handle `accountData.type === 'MyType'` in `publish.js` if it supports writing.
 
 The form, save, and load are handled automatically by the schema — no changes to `flasker.html` form logic are needed.

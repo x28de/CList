@@ -61,12 +61,12 @@ const editorHandlers = {
 
             currentEditor = 'texteditor';
             // alert(window.CList.config.flaskSiteUrl);
-            etherpadUsername = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+            etherpadUsername = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.USERNAME);
             if (!etherpadUsername) { etherpadUsername = 'user' + Math.floor(Math.random() * 1000); }
             // closeAllEditors();
 
             // Check whether textEditorDiv exists; if it doesn't, create it
-            const writePaneContent = document.getElementById('write-pane-content');
+            const writePaneContent = window.CList.ui.view.writePaneContent;
             let textEditorDiv = document.getElementById('textEditorDiv');
             if (!textEditorDiv) {
                 textEditorDiv = document.createElement('div');
@@ -88,7 +88,7 @@ const editorHandlers = {
             
             // Wire up auto-save once (guard against re-wiring on subsequent initialize calls)
             if (!textEditorDiv.dataset.draftWired) {
-                const ta = document.getElementById('text-column');
+                const ta = window.CList.ui.view.textColumn;
                 ta.addEventListener('input', debounce(() => saveDraft('texteditor', ta.value), 1000));
                 textEditorDiv.dataset.draftWired = '1';
             }
@@ -100,7 +100,7 @@ const editorHandlers = {
             console.log("Text editor initialized");
         },
         getContent: () => {
-            const textarea = document.getElementById('text-column');
+            const textarea = window.CList.ui.view.textColumn;
             if (!textarea) {
                 console.error("Textarea with ID 'write-column' not found.");
                 return ""; // Return an empty string or handle as needed
@@ -111,7 +111,7 @@ const editorHandlers = {
             // Strip HTML tags when receiving HTML content — the text editor works in plain text
             const itemContent = (type === 'text/html') ? cleanHTMLContent(value) : value;
 
-            const textarea = document.getElementById('text-column');
+            const textarea = window.CList.ui.view.textColumn;
             if (textarea) {
                 // Get the current selection start position
                 const cursorPosition = textarea.selectionStart;
@@ -195,7 +195,7 @@ async function playLoad() {
 
 // Build the load list from the loadHandlers registry
 function populateLoadOptions() {
-    const optionsDiv = document.getElementById('load-options');
+    const optionsDiv = window.CList.ui.view.loadOptions;
     optionsDiv.innerHTML = '';
 
     const list = document.createElement('div');
@@ -280,7 +280,7 @@ function populateLoadOptions() {
         label: 'Load template',
         icon:  'folder_open',
         load:  async () => {
-            const optionsDiv = document.getElementById('load-options');
+            const optionsDiv = window.CList.ui.view.loadOptions;
             if (optionsDiv) optionsDiv.innerHTML = '<p class="list-tip">Template loading is not yet implemented.</p>';
             return null;
         }
@@ -293,20 +293,6 @@ function closeWriteLoadPane() {
     alternateDivs('write-load', 'write-pane-content');
 }
 
-
-function makeEditorButton(label, icon, onClick) {
-    const btn = document.createElement('button');
-    btn.className = 'account-button';
-    const iconEl = document.createElement('span');
-    iconEl.className = 'material-icons';
-    iconEl.textContent = icon || 'edit';
-    const nameEl = document.createElement('span');
-    nameEl.textContent = label;
-    btn.appendChild(iconEl);
-    btn.appendChild(nameEl);
-    btn.addEventListener('click', async () => onClick());
-    return btn;
-}
 
 // Synchronously populate the built-in (no-account) editor buttons.
 function _populateBuiltInEditors(carriedContent) {
@@ -484,7 +470,7 @@ async function initializeEditor(editorType) {
 
     // Close all editors
     // Note that we do not remove the editors, we just hide them
-    const writePaneContent = document.getElementById('write-pane-content');
+    const writePaneContent = window.CList.ui.view.writePaneContent;
     if (writePaneContent) {
         Array.from(writePaneContent.children).forEach(child => {
             child.style.display = 'none';
@@ -574,7 +560,7 @@ function loadContent(content, itemId) {
 function loadContentToEditor(itemId) {
     let item_content;
     if (itemId === 'thread' || itemId === 'feed-container') {
-        const feedContainer = document.getElementById('feed-container');
+        const feedContainer = window.CList.ui.view.feedContainer;
         const tempContainer = feedContainer.cloneNode(true);
         tempContainer.querySelectorAll('.feed-header, .collection-detail-header').forEach(el => el.remove());
         tempContainer.querySelectorAll('.status-actions').forEach(el => el.remove());

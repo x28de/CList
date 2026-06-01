@@ -181,7 +181,7 @@ window.CList.schemas['Collab'] = {
     function setDocTitle(value) {
         const input = document.getElementById('collab-doc-id')
         if (input) input.value = value
-        const titleEl = document.getElementById('write-title')
+        const titleEl = window.CList.ui.view.writeTitle
         if (titleEl) titleEl.textContent = value
     }
 
@@ -298,7 +298,7 @@ window.CList.schemas['Collab'] = {
 
         const wsUrl = await getCollabWsUrl()
         const base  = wsUrlToRestBase(wsUrl)
-        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
+        const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || ''
         try {
             const pathId = docId.split('/').map(encodeURIComponent).join('/')
             const resp = await fetch(`${base}/api/documents/${pathId}`, {
@@ -497,7 +497,7 @@ window.CList.schemas['Collab'] = {
         if (!currentDocId) { showStatusMessage('Join a document first before sharing.'); return }
 
         const base     = wsUrlToRestBase(currentWsUrl)
-        const token    = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
+        const token    = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || ''
         const docTitle = currentDocTitle || currentDocId
 
         let allowAnon = false
@@ -585,7 +585,7 @@ window.CList.schemas['Collab'] = {
         if (hocuspocusProvider) { hocuspocusProvider.destroy(); hocuspocusProvider = null }
         if (tiptapEditor)       { tiptapEditor.destroy();       tiptapEditor = null }
 
-        const rawToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token')
+        const rawToken = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN)
         const token    = (mode === 'read' && !rawToken) ? 'anonymous' : (rawToken || 'anonymous')
         const userName = (window.CList.state.username && window.CList.state.username !== 'none' && window.CList.state.username !== '')
             ? window.CList.state.username
@@ -638,12 +638,12 @@ window.CList.schemas['Collab'] = {
             icon:    'group',
             visible: () => typeof isRegistered === 'function' && isRegistered(),
             load:    async () => {
-                const optionsDiv = document.getElementById('load-options')
+                const optionsDiv = window.CList.ui.view.loadOptions
                 optionsDiv.innerHTML = '<p class="list-tip">Loading documents…</p>'
                 try {
                     const wsUrl = await getCollabWsUrl()
                     const base  = wsUrlToRestBase(wsUrl)
-                    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
+                    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || ''
                     const resp  = await fetch(`${base}/api/documents`, {
                         headers: { Authorization: `Bearer ${token}` }
                     })
@@ -706,7 +706,7 @@ window.CList.schemas['Collab'] = {
             currentEditor = 'collab'
             injectStyles()
 
-            const writePaneContent = document.getElementById('write-pane-content')
+            const writePaneContent = window.CList.ui.view.writePaneContent
             let collabDiv = document.getElementById('collabDiv')
 
             if (!collabDiv) {
@@ -738,7 +738,7 @@ window.CList.schemas['Collab'] = {
                 input.addEventListener('input', scheduleDupCheck)
 
                 // Keep write-title in sync with the collab doc input
-                const writeTitle = document.getElementById('write-title')
+                const writeTitle = window.CList.ui.view.writeTitle
                 if (writeTitle) {
                     writeTitle.addEventListener('input', () => {
                         if (currentEditor !== 'collab') return

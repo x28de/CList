@@ -83,10 +83,25 @@ Each field is stored inside the encrypted kvstore value alongside `type`. Common
 
 ### Permissions field
 
-The `permissions` string controls which panes show this account:
-- `'r'` — shown in Read, not Post
-- `'w'` — shown in Post, not Read
-- `'rw'` — shown in both
+The `permissions` string is checked with `includes()`, so a single account can carry multiple flags (e.g. `'rw'` or `'rwe'`). Each flag opts the account into a specific subsystem:
+
+| Flag | Checked by | Effect |
+|---|---|---|
+| `r` | `reader.js` | Shown in the **Read** account list |
+| `w` | `publish.js`, `kvstore.js` | Shown in the **Post** publish list; also accepted as a kvstore write credential |
+| `p` | `kvstore.js` | Marks a kvstore credential store account |
+| `e` | `editors.js` | Shown as an available **Editor** (e.g. Etherpad, Collab) |
+| `t` | `translate.js` | Used as the **Translation** service |
+| `g` | `chatgpt.js` | Used as the **AI assistant** (GPT-style chat) |
+| `z` | `summarize.js` | Used as the **Summarize** service |
+| `s` | `rss.js` | Marks an RSS relay / OPML subscription source |
+
+Most social services use `'rw'`. Write-only targets (WordPress, Blogger) use `'w'`. Utility accounts (translators, editors, summarizers) use the single letter for their role.
+
+Not every subsystem uses permission flags. Two notable exceptions:
+
+- **Annotate / Hypothesis** — selected by account `type` (`'Annotate'` or `'Hypothesis'`), not by a flag. The `permissions` field still controls read/write within those accounts in the normal way.
+- **Collections** — not account-based at all; collection data is stored as kvstore entries with a `collection:` key prefix and has no account-level opt-in.
 
 ---
 
@@ -107,12 +122,13 @@ await handler.initialize(accountData);
 
 `initialize(accountData)` receives the full parsed account object and is responsible for extracting whatever it needs — credentials, instance URL, etc. The handler then owns all feed loading logic; `reader.js` has no knowledge of individual service types.
 
+### Handler shape
+
 ```javascript
 (function () {
     window.CList.readers['MyService'] = {
 
         // Called once when the user selects this account for reading.
-        // accountData shape: { type, instance, id, title, permissions, … }
         initialize: async (accountData) => {
             const baseURL = extractBaseUrl(accountData.instance);
             const token   = accountData.id;
@@ -127,26 +143,136 @@ await handler.initialize(accountData);
             'Search':   () => openLeftInterface(myServiceSearchForm()),
         },
 
-        // Called when the user clicks the feed name on a feed item. null = not clickable.
-        onFeedClick: (item) => myServiceFilterByFeed(item.feedUrl),
+        // Called when the user clicks the feed name in the item summary bar.
+        // Receives the normalized item object. null = feed name is not clickable.
+        onFeedClick: (item) => loadMyServiceFeed('user', item.myservice?.userId),
 
-        // Called when the user clicks the author name on a feed item. null = not clickable.
-        onAuthorClick: (item) => myServiceLoadUserFeed(item.author),
+        // Called when the user clicks the author name in the item summary bar.
+        // Receives the normalized item object. null = author name is not clickable.
+        onAuthorClick: null,
 
-        // Returns an HTML string of action buttons for each feed item.
-        // Return null to show no actions (reader.js will log a warning).
-        statusActions: (item, itemID, itemUrl) => {
-            return `<button …>…</button>`;
-        },
+        // Returns an HTML string of service-specific action buttons per item.
+        // makeListing() appends the collect and share buttons itself — do not include them here.
+        statusActions: (item, itemID, itemUrl) => { /* see below */ },
     };
 })();
 ```
 
-### Feed loading conventions
-- Clear `feedContainer.innerHTML = ''` on first page load; skip on pagination.
-- Append items by calling `makeListing(…)` from `reader.js`, which normalises items into the standard feed item DOM.
-- Wrap the full fetch in `try/catch`; on failure call `showServiceError(feedContainer, …)`.
-- If a page returns zero items, set `feedContainer.innerHTML = '<p class="feed-status-message">…</p>'`.
+### statusActions
+
+Returns an HTML string of **service-specific** buttons only. `makeListing()` always appends the collect (library_add) and share (chat_bubble_outline) buttons after these — do not include them in `statusActions`.
+
+Use `_he(val)` for values in HTML content or attribute context, and `_heJs(val)` for values inside `onclick` JS string literals (i.e. inside `'...'` delimiters). Both are defined in `reader.js` and available in all service files. See the Icon Button Pattern in `CLAUDE.md` for the button markup.
+
+Per-post state (IDs, URIs, flags) should be stored on a service-specific sub-object by the normalizer (see below) and destructured in `statusActions`:
+
+```javascript
+statusActions: (item, _itemID, _itemUrl) => {
+    const { postId, isLiked } = item.myservice || {};
+    return `
+        <button class="material-icons md-18 md-light${isLiked ? ' action-active' : ''}"
+                title="Like"
+                onclick="handleMyServiceAction('${_heJs(postId)}', 'like', this)">
+            favorite
+        </button>
+        <button class="material-icons md-18 md-light" title="Open in browser"
+                onclick="window.open('${_heJs(_itemUrl)}','_blank','width=800,height=600,scrollbars=yes')">
+            launch
+        </button>
+    `;
+},
+```
+
+### Normalization function
+
+Write an async `normalizeMyServicePost(rawItem)` function that maps the API response to the shape `makeListing()` expects. This keeps all API-to-UI translation in one place and makes the feed loop trivial.
+
+```javascript
+async function normalizeMyServicePost(raw) {
+    let desc;
+    try   { desc = await processTranslationWithTimeout(raw.text); }
+    catch { desc = raw.text; }
+
+    return {
+        service:      'MyService',
+        url:          raw.url,                    // required — used as element ID
+        titleHtml:    `<a href="#" onclick="loadMyServiceUserFeed('${_heJs(raw.author.handle)}');return false;"
+                          title="View user feed">${_he(raw.author.displayName)}</a> wrote:`,
+                                                  // optional: overrides default title link
+        title:        desc.slice(0, 80),          // plain text fallback if titleHtml is omitted
+        desc,                                     // plain text shown in summary bar
+        full_content: new SafeHtml(raw.html),     // sanitized HTML; omit if no rich content
+        feed:         raw.author.displayName,     // shown in summary bar (clickable if onFeedClick set)
+        author:       null,                       // shown in summary bar if onAuthorClick set
+        author_id:    raw.author.handle,          // used in reference object for reply targeting
+        date:         raw.createdAt,
+        images:       (raw.images || []).map(img => ({
+                          url:         img.fullsize,
+                          preview_url: img.thumb,
+                          description: img.alt || '',
+                      })),
+        guid:         raw.uri || raw.url,
+        replyToken:   { type: 'MyService', id: raw.id },  // passed through to publisher
+        myservice: {                              // service-specific state for statusActions
+            postId:   raw.id,
+            isLiked:  !!raw.viewer?.like,
+        },
+    };
+}
+```
+
+**`full_content`** must be a `SafeHtml` instance — construct with `new SafeHtml(sanitizedHtml)` after sanitizing the markup. Passing a plain string throws. Omit the field entirely if there is no rich HTML content beyond the plain text `desc`.
+
+**`titleHtml`** is optional. When provided it overrides the default `<a onclick="MyServiceSearch(...)">title</a>` rendering, which is useful when the natural "title" of an item is the author name rather than a document title.
+
+**`author`** and **`feed`** control what appears in the summary bar below the title:
+- `feed` — always shown; rendered as a clickable link if `onFeedClick` is set, otherwise a plain span
+- `author` — shown as a clickable link only when both `author` is non-null and `onAuthorClick` is set
+
+**`onFeedClick` / `onAuthorClick`** receive the full normalized item, so use the service-specific sub-object (e.g. `item.myservice?.userId`) rather than `item.author` when you need a handle or ID for an API call.
+
+### Feed loading with `renderFeed`
+
+Call `CList.ui.renderFeed(rawItems, container, options)` instead of building the container DOM by hand. It handles clearing, the feed header, the `#feed-summary` div, the per-item normalize+makeListing loop, and the load-more button.
+
+```javascript
+async function loadMyServiceFeed(type, cursor = null) {
+    const fc = window.CList.ui.view.feedContainer;
+    let data;
+    try {
+        data = await myServiceFetch(type, cursor);
+    } catch (err) {
+        console.error('MyService fetch failed:', err);
+        showServiceError(fc, 'MyService error', err.message,
+            'Check your credentials under <strong>Accounts</strong>.');
+        return;
+    }
+    if (!data.posts.length) {
+        fc.innerHTML = '<p class="feed-status-message">No posts found.</p>';
+        return;
+    }
+    await window.CList.ui.renderFeed(data.posts, fc, {
+        normalize:    normalizeMyServicePost,
+        title:        cursor == null ? type : null,   // null = paginating, skip clear+header
+        append:       cursor != null,
+        onLoadMore:   data.cursor ? () => loadMyServiceFeed(type, data.cursor) : null,
+        loadMoreBtnId: 'myservice-load-more',
+    });
+}
+```
+
+`renderFeed` options:
+
+| Option | Type | Description |
+|---|---|---|
+| `normalize` | `async (rawItem) => item` | Required. Maps a raw API object to the `makeListing()` item shape. |
+| `title` | `string \| null` | Feed type string passed to `createFeedHeader`. `null` = skip clear, header, and summary div. |
+| `typevalue` | `string \| null` | Second arg to `createFeedHeader` (e.g. hashtag name, username). |
+| `append` | `boolean` | `true` = paginating; skip clear, header, and `#feed-summary`. Default `false`. |
+| `onLoadMore` | `function \| null` | Zero-argument callback wired to the load-more button. `null` = no button. |
+| `loadMoreBtnId` | `string` | ID for the load-more button. Default `'loadMoreButton'`. |
+
+Catch fetch errors **before** calling `renderFeed` and display them with `showServiceError`. Only call `renderFeed` once you have data to render.
 
 ---
 

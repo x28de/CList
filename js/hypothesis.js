@@ -343,7 +343,7 @@ window.hypothesisCreate = async function(acct, payload) {
 
             if (successCount === 1) return firstId;
 
-            const resultDiv = document.getElementById('post-result');
+            const resultDiv = window.CList.ui.view.postResult;
             if (resultDiv) {
                 refs.forEach(ref => {
                     if (!ref.url || ref.url === '(no URL provided)') return;

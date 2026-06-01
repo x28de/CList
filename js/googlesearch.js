@@ -33,7 +33,7 @@
     
 async function googleSearch(query,type,start) {
 
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
     const dateString = new Date().toISOString();
 
         // Get generater from accounts

@@ -301,7 +301,7 @@ window.sanitizeHtml = _rssSanitizeHtml;
 async function _rssFetchFeed(feedUrl, collectionKey, serviceUrl) {
     try {
         const token = (typeof getSiteSpecificCookie === 'function')
-            ? getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token') || ''
+            ? getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || ''
             : '';
         const headers = {};
         // Auth headers only needed for the hosted opml2json service, not localhost
@@ -381,7 +381,7 @@ async function initializeRSS(accountData) {
 async function rssRefresh() {
     if (!rssCurrentAccount) return;
     const key = rssCurrentAccount.instance;
-    const fc  = document.getElementById('feed-container');
+    const fc  = window.CList.ui.view.feedContainer;
     if (fc) fc.innerHTML = '<p class="feed-status-message" id="rss-fetch-status">Fetching feeds…</p>';
     delete _rssFetchState[key];
     _rssBgFetch(rssCurrentAccount).catch(e => {
@@ -446,7 +446,7 @@ function rssBackgroundFetchAll(accounts) {
 
 async function rssDisplayEntries() {
     if (!rssCurrentAccount) return;
-    const fc = document.getElementById('feed-container');
+    const fc = window.CList.ui.view.feedContainer;
     if (!fc) return;
     try {
         const key    = rssCurrentAccount.instance;
@@ -512,7 +512,7 @@ async function rssDisplayEntries() {
 }
 
 function _rssAppendPage() {
-    const fc = document.getElementById('feed-container');
+    const fc = window.CList.ui.view.feedContainer;
     if (!fc) return;
 
     document.getElementById('rss-load-more')?.remove();

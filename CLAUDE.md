@@ -78,7 +78,7 @@ Full reference: `docs/error-handling.md`. These rules apply to all new and modif
 
 **Never use `alert()`, `confirm()` (for errors), or `prompt()`** — use the helpers below instead.
 
-### Helpers (all in `utilities.js`)
+### Helpers (`showServiceError` and `showStatusMessage` are in `ui.js`; `parseAccountValue` is in `utilities.js`)
 
 - **`showServiceError(container, title, message, actionHtml?)`** — persistent red `error-message` div
   appended to a feed container. Use for hard failures: feed loads, API errors, missing credentials.
@@ -125,6 +125,20 @@ window.CList.readers['MyService'] = {
 ```
 
 See `docs/adding-a-service.md` for the complete pattern.
+
+## Storage Keys
+
+**Never use bare string literals for storage key names.** Use the constants in `window.CList.keys` instead:
+
+| Constant | String value | Used for |
+|---|---|---|
+| `window.CList.keys.ACCESS_TOKEN` | `'access_token'` | kvstore auth token (site-specific cookie) |
+| `window.CList.keys.USERNAME` | `'username'` | logged-in username (site-specific cookie) |
+| `window.CList.keys.TOKEN_EXPIRES` | `'token_expires'` | token expiry timestamp (site-specific cookie) |
+| `window.CList.keys.OAUTH_CALLBACK_RESULT` | `'oauth_callback_result'` | OAuth popup result (localStorage) |
+| `window.CList.keys.KVSTORE_URL` | `'clist_kvstore_url'` | selected kvstore server URL (localStorage) |
+
+These constants are declared in the inline `<script>` block in `index.html` and are available before any deferred script loads. Using them ensures a rename is a one-line change and prevents typo-silent bugs.
 
 ## Cautions
 

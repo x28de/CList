@@ -112,17 +112,17 @@ function wpAuthStart(siteUrl) {
 // On page load, check whether we're returning from a WordPress authorization.
 // callback.html stores the result in localStorage; we pick it up here and save to kvstore.
 document.addEventListener('DOMContentLoaded', async function () {
-    const raw = localStorage.getItem('oauth_callback_result');
+    const raw = localStorage.getItem(window.CList.keys.OAUTH_CALLBACK_RESULT);
     if (!raw) return;
     let data;
     try { data = JSON.parse(raw); } catch (e) { return; }
     if (data.providerType !== 'WordPress') return;
-    localStorage.removeItem('oauth_callback_result');
+    localStorage.removeItem(window.CList.keys.OAUTH_CALLBACK_RESULT);
     await saveWordPressAccount(data.siteUrl, data.userLogin, data.password);
 });
 
 async function saveWordPressAccount(siteUrl, userLogin, password) {
-    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'access_token');
+    const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
     if (!token) { showStatusMessage('Please log in to kvstore before authorizing WordPress.'); return; }
 
     const encKey = await getEncKey(window.CList.config.flaskSiteUrl);

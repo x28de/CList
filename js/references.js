@@ -33,7 +33,7 @@ function pushReference(ref) {
     if (isDuplicate) return false;
     window.CList.state.references.push(ref);
     _renderReferencesPanel();
-    const refsBtn = document.getElementById('references-button');
+    const refsBtn = window.CList.ui.view.referencesButton;
     if (refsBtn) refsBtn.style.display = '';
     return true;
 }
@@ -48,7 +48,7 @@ function clearReferences() {
     window.CList.state.references = [];
     const panel = document.getElementById('clist-references-panel');
     if (panel) panel.innerHTML = '';
-    const refsBtn = document.getElementById('references-button');
+    const refsBtn = window.CList.ui.view.referencesButton;
     if (refsBtn) refsBtn.style.display = 'none';
 }
 
@@ -60,7 +60,7 @@ function _renderReferencesPanel() {
         panel = document.createElement('div');
         panel.id = 'clist-references-panel';
         panel.className = 'allReferences';
-        const writePane = document.getElementById('write-pane');
+        const writePane = window.CList.ui.view.writePaneEl;
         if (writePane) writePane.appendChild(panel);
     }
 

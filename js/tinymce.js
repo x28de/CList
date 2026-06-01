@@ -29,7 +29,7 @@ let pendingTinymceDraftOffer = false;
 
             if (TinyMCE_Intialized) {
                 console.log("TinyMCE already initialized.");
-                const writePaneContent = document.getElementById('write-pane-content');
+                const writePaneContent = window.CList.ui.view.writePaneContent;
                 writePaneContent.style.display = 'block'; // Show the content area
                 let tinymceEditorDiv = document.getElementById('tinymceEditorDiv');
                 tinymceEditorDiv.style.display = 'block'; // Show the editor
@@ -38,7 +38,7 @@ let pendingTinymceDraftOffer = false;
 
 
             // Check whether tinymceEditorDiv exists; if it doesn't, create it
-            const writePaneContent = document.getElementById('write-pane-content');
+            const writePaneContent = window.CList.ui.view.writePaneContent;
             let tinymceEditorDiv = document.getElementById('tinymceEditorDiv');
             if (!tinymceEditorDiv) {
                 console.log("Creating TinyMCE editor div");

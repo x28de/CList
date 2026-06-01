@@ -59,7 +59,7 @@ async function initializeOPML(opmlUrl) {
         showServiceError('feed-container', 'OPML error', 'No OPML URL provided.');
         return;
     }
-    const fc = document.getElementById('feed-container');
+    const fc = window.CList.ui.view.feedContainer;
     if (fc) {
         fc.innerHTML = '';
         const msg = document.createElement('p');

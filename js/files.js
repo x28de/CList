@@ -125,7 +125,7 @@ function parseHtmlContent(content, mimeType) {
     const mainContent = doc.querySelector("#post-content")?.innerHTML || "default content";
     const referencesContent = doc.querySelector("#post-references")?.innerHTML || "";
 
-    const titleInput = document.getElementById("write-title");
+    const titleInput = window.CList.ui.view.writeTitle;
     if (titleInput) titleInput.value = titleContent;
 
     const referencesDiv = document.getElementById("writeReferences");
@@ -148,7 +148,7 @@ function looksLikeHtml(content) {
 async function packagePost() {
     // Get title
 
-    const titleValue = document.getElementById('write-title').innerText;
+    const titleValue = window.CList.ui.view.writeTitle.innerText;
 
     // Get editor content
     const handler = editorHandlers[currentEditor];

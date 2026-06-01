@@ -75,7 +75,7 @@ const etherpadBaseUrl = 'https://etherpad.cloudron.downes.ca/api/1.2.15';
             etherpadUsername = 'exampleUser'; // Will be replaced with the actual username
 
             // Check whether etherpadDiv exists; if it doesn't, create it
-            const writePaneContent = document.getElementById('write-pane-content');
+            const writePaneContent = window.CList.ui.view.writePaneContent;
             let etherpadDiv = document.getElementById('etherpadDiv');   
 
             if (!etherpadDiv) { 
@@ -257,7 +257,7 @@ async function initializeEtherpad() {
 
 
         // Step 1: Get or create the author ID
-        etherpadUsername = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, 'username');
+        etherpadUsername = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.USERNAME);
         if (!etherpadUsername) { etherpadUsername = 'user' + Math.floor(Math.random() * 1000); }
         authorID = await getAuthorId(etherpadUsername);
         console.log('Author ID:', authorID);

@@ -168,8 +168,8 @@ async function postAll() {
 
     const post = await packagePost();
     if (!post) return; // packagePost() already displayed the error (e.g. missing title)
-    const writeColumnTitle = document.getElementById('write-title').innerText.trim();
-    const resultDiv = document.getElementById('post-result');
+    const writeColumnTitle = window.CList.ui.view.writeTitle.innerText.trim();
+    const resultDiv = window.CList.ui.view.postResult;
     resultDiv.innerHTML = '';
 
     const allAccounts = await getAccounts(window.CList.config.flaskSiteUrl);

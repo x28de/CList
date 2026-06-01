@@ -42,7 +42,22 @@ let _bskyPds   = null;
             'Recommended':   async () => openLeftInterface(await blueskySelectForm('recommended')),
             'What\'s Hot':   fetchBlueskyWhatsHotFeed.bind(null,'hot'),
             'Search':        () => openLeftInterface(blueskySearchForm()),
-        }
+        },
+        onFeedClick:   (item) => fetchBlueskyUserFeed(item.bluesky?.handle),
+        onAuthorClick: null,
+        statusActions: (item, _itemID, _itemUrl) => {
+            const { isLiked, isReposted, likeUri, repostUri,
+                    inThread, threadUri,
+                    parentUri, parentCid, rootUri, rootCid,
+                    uri: postUri, cid: postCid, postId, postUrl } = item.bluesky || {};
+            return `
+                <button class="material-icons md-18 md-light" title="Reply" onclick="openLeftInterface(blueskyReplyForm('${_heJs(parentUri)}','${_heJs(parentCid)}','${_heJs(rootUri)}','${_heJs(rootCid)}'))">reply</button>
+                <button class="material-icons md-18 md-light${isLiked ? ' action-active' : ''}" title="Like" data-record-uri="${_he(likeUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','favorite',this)">favorite</button>
+                <button class="material-icons md-18 md-light${isReposted ? ' action-active' : ''}" title="Repost" data-record-uri="${_he(repostUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','repost',this)">autorenew</button>
+                ${inThread ? `<button class="material-icons md-18 md-light" title="View thread" onclick="displayThread('${_heJs(threadUri)}')">dynamic_feed</button>` : ''}
+                <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${_heJs(postUrl)}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+            `;
+        },
     };
     if (typeof window.CList.readers === 'undefined') {
         window.CList.readers = {};
@@ -434,135 +449,64 @@ async function fetchBlueskyFeed(title, atUri, limit = 20, cursor = null) {
     }
 }
 
+// Normalize a raw Bluesky API post object into the shape makeListing() expects.
+// Async because translation (processTranslationWithTimeout) is per-item.
+async function normalizeBlueskyPost(post) {
+    const authorName  = post.author.displayName || "Unknown Author";
+    const handle      = post.author.handle;
+    const postId      = post.uri.split('/').pop();
+    const postUrl     = `https://bsky.app/profile/${handle}/post/${postId}`;
+    const postContent = post.record.text || '';
+
+    let desc;
+    try   { desc = await processTranslationWithTimeout(postContent); }
+    catch { desc = postContent; }
+
+    const isLiked    = !!(post.viewer?.like);
+    const isReposted = !!(post.viewer?.repost);
+    const likeUri    = post.viewer?.like   || '';
+    const repostUri  = post.viewer?.repost || '';
+    const inThread   = !!(post.record.reply?.root?.uri) || post.replyCount > 0;
+    const threadUri  = inThread ? (post.record.reply?.root?.uri || post.uri) : null;
+    const parentUri  = post.uri;
+    const parentCid  = post.cid;
+    const rootUri    = post.record.reply?.root?.uri || post.uri;
+    const rootCid    = post.record.reply?.root?.cid || post.cid;
+
+    return {
+        service:    'Bluesky',
+        url:        postUrl,
+        titleHtml:  `<a href="#" onclick="fetchBlueskyUserFeed('${_heJs(handle)}'); return false;" title="View User Feed">${_he(authorName)}</a> (@${_he(handle)}) wrote:`,
+        title:      postContent.slice(0, 80),
+        desc,
+        feed:       authorName,
+        author:     null,
+        date:       post.record.createdAt || new Date().toISOString(),
+        images:     (post.embed?.images || []).map(img => ({
+                        preview_url: img.thumb,
+                        url:         img.fullsize,
+                        description: img.alt || ''
+                    })),
+        guid:       post.uri,
+        author_id:  handle,
+        replyToken: { type: 'Bluesky', uri: post.uri, cid: post.cid },
+        bluesky:    { handle, postId, postUrl,
+                      isLiked, isReposted, likeUri, repostUri,
+                      inThread, threadUri,
+                      parentUri, parentCid, rootUri, rootCid,
+                      uri: post.uri, cid: post.cid },
+    };
+}
+
 async function displayBlueskyPosts(posts, title, cursor = null, atUri) {
-    const timelineElement = document.getElementById('feed-container');
-
-    if (title != null) {
-        timelineElement.innerHTML = '';
-        if (title === 'Thread') { feedTitle = "Bluesky Thread"; }
-        else { feedTitle = title; }
-        timelineElement.appendChild(createFeedHeader(feedTitle));
-    }
-
-    const summary = document.createElement("div");
-    summary.id = "feed-summary";
-    timelineElement.appendChild(summary);
-
-    for (const item of posts) {
-        const post = item.post;
-        const authorName = post.author.displayName || "Unknown Author";
-        const postContent = post.record.text || "No content available";
-        const handle = post.author.handle;
-        const postId = post.uri.split('/').pop();
-        const postUrl = `https://bsky.app/profile/${handle}/post/${postId}`;
-
-        const statusBox = document.createElement('div');
-        statusBox.classList.add('status-box');
-
-        const statusContent = document.createElement('div');
-        statusContent.classList.add('status-content');
-        statusBox.appendChild(statusContent);
-
-        try {
-            translatedContent = await processTranslationWithTimeout(postContent);
-        } catch (translationError) {
-            console.error(`Error translating status ${postId}:`, translationError);
-            translatedContent = "[Translation failed]";
-        }
-
-        const statusSpecific = document.createElement('div');
-        statusSpecific.classList.add('statusSpecific');
-        statusSpecific.id = `${postId}`;
-        statusSpecific.innerHTML = `
-        <p><a href="#" onclick="fetchBlueskyUserFeed('${handle}'); return false;" title='View User Feed'>${authorName}</a> (@${handle}) wrote:
-        ${translatedContent}
-        `;
-        statusContent.appendChild(statusSpecific);
-
-        if (post.embed && post.embed.images) {
-            const statusImages = document.createElement('div');
-            statusImages.classList.add('status-images-container');
-
-            post.embed.images.forEach(image => {
-                const imageElement = document.createElement('div');
-                imageElement.classList.add('image-item');
-                imageElement.innerHTML = `
-                    <a href="${image.fullsize}" target="_blank">
-                        <img src="${image.thumb}" alt="${image.alt || 'Image'}"/>
-                    </a>
-                `;
-                statusImages.appendChild(imageElement);
-            });
-
-            statusContent.appendChild(statusImages);
-        }
-
-        statusSpecific.reference = {
-            service:     'Bluesky',
-            author_name: authorName,
-            author_id:   handle,
-            url:         postUrl,
-            title:       'Bluesky',
-            created_at:  new Date().toISOString(),
-            id:          statusSpecific.id,
-            summary:     postContent.slice(0, 140),
-            replyToken:  { type: 'Bluesky', uri: post.uri, cid: post.cid },
-        };
-
-        const isLiked    = !!(post.viewer && post.viewer.like);
-        const isReposted = !!(post.viewer && post.viewer.repost);
-        const likeUri    = post.viewer?.like   || '';
-        const repostUri  = post.viewer?.repost || '';
-
-        const inThread = (post.record.reply && post.record.reply.root && post.record.reply.root.uri) || post.replyCount > 0;
-        const threadUri = inThread
-            ? (post.record.reply?.root?.uri || post.uri)
-            : null;
-
-        const parentUri  = post.uri;
-        const parentCid  = post.cid;
-        const rootUri    = post.record.reply?.root?.uri  || post.uri;
-        const rootCid    = post.record.reply?.root?.cid  || post.cid;
-
-        const blueskyActionButtons = document.createElement('div');
-        blueskyActionButtons.classList.add('status-actions');
-        blueskyActionButtons.innerHTML = `
-            <button class="material-icons md-18 md-light" title="Reply" onclick="openLeftInterface(blueskyReplyForm('${parentUri}','${parentCid}','${rootUri}','${rootCid}'))">reply</button>
-            <button class="material-icons md-18 md-light${isLiked ? ' action-active' : ''}" title="Like" data-record-uri="${likeUri}" onclick="handleBlueskyAction('${post.uri}','${post.cid}','${postId}','favorite',this)">favorite</button>
-            <button class="material-icons md-18 md-light${isReposted ? ' action-active' : ''}" title="Repost" data-record-uri="${repostUri}" onclick="handleBlueskyAction('${post.uri}','${post.cid}','${postId}','repost',this)">autorenew</button>
-            ${inThread ? `<button class="material-icons md-18 md-light" title="View thread" onclick="displayThread('${threadUri}')">dynamic_feed</button>` : ''}
-            <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
-            <button class="clist-action-btn" id="collect-btn-${postId}" onclick="collectItem('${postId}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
-            <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
-        `;
-        statusContent.appendChild(blueskyActionButtons);
-
-        const clistButtons = document.createElement('div');
-        clistButtons.classList.add('clist-actions');
-        clistButtons.innerHTML = `
-            <button class="clist-action-btn" id="anno-btn-${postId}" onclick="clistAnnotate('${postId}');" title="Write about this"><span class="material-icons md-18 md-light">arrow_forward</span></button>
-        `;
-
-        statusBox.appendChild(clistButtons);
-
-        timelineElement.appendChild(statusBox);
-    }
-
-    const existingButton = document.getElementById('loadMoreButton');
-    if (existingButton) {
-        existingButton.remove();
-    }
-
-    if (cursor && cursor != 1) {
-        const loadMoreButton = document.createElement('button');
-        loadMoreButton.id = 'loadMoreButton';
-        loadMoreButton.innerText = "Load More";
-        loadMoreButton.onclick = () => {
-            fetchBlueskyFeed(null, atUri, 20, cursor);
-        };
-        timelineElement.appendChild(loadMoreButton);
-    }
-    window.checkAnnotationsBatch?.();
+    if (title != null) feedTitle = (title === 'Thread') ? "Bluesky Thread" : title;
+    await window.CList.ui.renderFeed(posts, window.CList.ui.view.feedContainer, {
+        normalize:    (item) => normalizeBlueskyPost(item.post),
+        title:        title != null ? feedTitle : null,
+        append:       title == null,
+        onLoadMore:   (cursor && cursor != 1) ? () => fetchBlueskyFeed(null, atUri, 20, cursor) : null,
+        loadMoreBtnId: 'loadMoreButton',
+    });
 }
 
 // Toggle like or repost on a Bluesky post.
@@ -649,7 +593,7 @@ async function displayThread(uri) {
     const threadData = await fetchThreadByUri(uri);
 
     if (!threadData) {
-        document.getElementById('feed-container').innerText = 'Failed to load thread. No data found for the post thread.';
+        window.CList.ui.view.feedContainer.innerText = 'Failed to load thread. No data found for the post thread.';
         return;
     }
 
@@ -737,7 +681,7 @@ async function submitBlueskyPost(content, responseDiv, replyContentId = null, pa
 // ── Notifications ─────────────────────────────────────────────────────────────
 
 async function fetchBlueskyNotifications(cursor = null) {
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
     try {
         const { accessToken, pds } = await createBlueskySession();
         let url = `${pds}/xrpc/app.bsky.notification.listNotifications?limit=25`;
@@ -759,7 +703,7 @@ async function fetchBlueskyNotifications(cursor = null) {
 }
 
 async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
-    const feedContainer = document.getElementById('feed-container');
+    const feedContainer = window.CList.ui.view.feedContainer;
 
     if (isFirstPage) {
         feedContainer.innerHTML = '';

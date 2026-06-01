@@ -837,6 +837,46 @@ window.CList.schemas['Collab'] = {
         }
     })
 
+    // Opens a collab document seeded from a collection.
+    // Creates a new doc (slug derived from collection name), switches to the Collab
+    // editor, connects, then inserts the item list if the doc is empty.
+    // If a chat session is active, broadcasts a collab invite to peers.
+    window.openCollabWithCollection = async function(collectionName, items) {
+        try {
+            if (typeof initializeEditor === 'function' && currentEditor !== 'collab') {
+                await initializeEditor('collab')
+            }
+            const slug = (collectionName || '').toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+                || generateDocSlug()
+            const docId = await expandDocId(slug)
+            setDocTitle(slug)
+            currentDocTitle = collectionName || slug
+            await connectToDoc(docId)
+
+            // Seed content if the doc is new (empty after sync settles).
+            setTimeout(() => {
+                if (tiptapEditor && tiptapEditor.isEmpty && items?.length) {
+                    const itemHtml = items
+                        .filter(i => i.url)
+                        .map(i => `<p><a href="${escapeHtml(i.url)}">${escapeHtml(i.title || i.url)}</a></p>`)
+                        .join('')
+                    tiptapEditor.commands.setContent(
+                        `<h2>${escapeHtml(collectionName || slug)}</h2>${itemHtml}`
+                    )
+                }
+            }, 800)
+
+            // Broadcast a collab invite to any active chat session.
+            if (typeof window.sendCollabInvite === 'function') {
+                window.sendCollabInvite({ docId, title: collectionName || slug, mode: 'edit', server: currentWsUrl })
+            }
+        } catch (e) {
+            showStatusMessage('Failed to open collection in Collab: ' + e.message)
+            console.error('openCollabWithCollection failed:', e)
+        }
+    }
+
     // Called by chat invite cards — switches to Collab editor and connects.
     window.openCollabInvite = async function(invite) {
         try {

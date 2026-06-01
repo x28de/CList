@@ -338,6 +338,18 @@ function _showCollectionDetail(col, token, encKey) {
     loadBtn.innerHTML = '<span class="material-icons md-18 md-light">arrow_forward</span>';
     loadBtn.onclick   = () => _loadCollectionIntoEditor(col.items);
 
+    const collabBtn = document.createElement('button');
+    collabBtn.className = 'clist-action-btn';
+    collabBtn.title     = 'Open in Collab';
+    collabBtn.innerHTML = '<span class="material-icons md-18 md-light">edit_note</span>';
+    collabBtn.onclick   = () => {
+        if (typeof window.openCollabWithCollection === 'function') {
+            window.openCollabWithCollection(col.name, col.items);
+        } else {
+            showStatusMessage('Collab editor not available.');
+        }
+    };
+
     const shareBtn = document.createElement('button');
     shareBtn.className = 'clist-action-btn';
     shareBtn.title     = 'Share to chat';
@@ -348,6 +360,7 @@ function _showCollectionDetail(col, token, encKey) {
     };
 
     rightZone.appendChild(loadBtn);
+    rightZone.appendChild(collabBtn);
     rightZone.appendChild(shareBtn);
 
     header.appendChild(leftZone);

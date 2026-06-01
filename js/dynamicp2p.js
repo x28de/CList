@@ -31,6 +31,8 @@ let myIdentityKey  = null; // Ed25519 CryptoKey for signing (private, decrypted 
 let peerDids          = {}; // peerId → did:key
 let peerPublicKeyJwks = {}; // peerId → publicKeyJwk (for signature verification)
 
+let chatBc = null; // BroadcastChannel to chat popup window, null when no popup is open
+
 /**
  * playChat()
  *
@@ -299,6 +301,33 @@ function appendMessage(message, isOwn = false, isEvent = false) {
     div.style.textAlign = isOwn ? 'right' : 'left';
   }
   document.getElementById('chat-messages').appendChild(div);
+  if (chatBc) chatBc.postMessage({ type: 'chat-msg', html: div.innerHTML, isOwn, isEvent });
+}
+
+/**
+ * openChatPopup()
+ *
+ * Opens chat-popup.html in a separate browser window and wires it up via
+ * BroadcastChannel. The main window retains the WebRTC peer connection;
+ * the popup receives relayed messages and sends outgoing ones back through
+ * the channel so the main window can forward them to peers.
+ */
+function openChatPopup() {
+  window.open('chat-popup.html', 'clist-chat-popup', 'width=420,height=620,resizable=yes');
+
+  if (chatBc) return; // already open — window.open will focus the existing one
+
+  chatBc = new BroadcastChannel('clist-chat');
+  chatBc.onmessage = (e) => {
+    if (e.data.type === 'popup-ready') {
+      chatBc.postMessage({ type: 'chat-state', discussionName: activeDiscussionName });
+    } else if (e.data.type === 'send-msg') {
+      if (e.data.message && p2pInitialized) sendMessage(e.data.message);
+    } else if (e.data.type === 'popup-closed') {
+      chatBc.close();
+      chatBc = null;
+    }
+  };
 }
 
 /**

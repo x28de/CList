@@ -731,10 +731,18 @@ function appendShareCard(data, sender) {
     const loadBtn = document.createElement('button');
     loadBtn.textContent = '→ Load to editor';
     loadBtn.addEventListener('click', () => {
+      // Build a formatted HTML block: title as link + excerpt if present.
+      const safeTitle   = escapeHtml(data.title || data.url || '');
+      const safeUrl     = escapeHtml(data.url || '');
+      const safeExcerpt = data.excerpt ? `<p>${escapeHtml(data.excerpt)}</p>` : '';
+      const html = `<p><strong><a href="${safeUrl}">${safeTitle}</a></strong></p>${safeExcerpt}`;
+
+      if (typeof loadContent === 'function') {
+        loadContent({ type: 'text/html', value: html });
+      }
       if (typeof pushReference === 'function') {
         pushReference({ url: data.url, title: data.title || data.url, author_name: displaySender,
           feed: 'Chat share', created_at: new Date().toISOString(), id: data.url, guid: data.url });
-        showStatusMessage('Added to references.');
       }
     });
     actionsEl.appendChild(loadBtn);

@@ -359,9 +359,9 @@ function _showCollectionDetail(col, token, encKey) {
         sendShareMessage('collection', null, col.name, null, { items });
     };
 
-    rightZone.appendChild(loadBtn);
     rightZone.appendChild(collabBtn);
     rightZone.appendChild(shareBtn);
+    rightZone.appendChild(loadBtn);
 
     header.appendChild(leftZone);
     header.appendChild(titleEl);

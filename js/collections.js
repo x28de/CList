@@ -13,6 +13,19 @@ const _COLLECTION_NAME_RE = /^[a-zA-Z0-9#\-_ ]+$/;
 
 let _collectionsPopstateHandler = null;
 
+// Returns a human-readable display title for a collection item.
+// Social platform items (Mastodon, Bluesky) show "Platform (@handle)" instead
+// of the bare service name stored in item.title.
+function _collectionItemDisplayTitle(item) {
+    const isSocial = item.service === 'Mastodon' || item.service === 'Bluesky'
+                  || item.title   === 'Mastodon' || item.title   === 'Bluesky';
+    if (!isSocial) return item.title || item.url || '';
+    const platform = item.title || item.service || 'Social';
+    if (item.author_id)   return `${platform} (@${item.author_id})`;
+    if (item.author_name) return `${platform} (${item.author_name})`;
+    return platform;
+}
+
 // Called from collect buttons on all feed item types.
 window.collectItem = function(itemId, opts) {
     _showCollectionPicker(itemId, opts);
@@ -235,14 +248,11 @@ function _renderCollectionItems(col, token, encKey, countSpan, itemsDiv) {
     for (const item of col.items) {
         if (!item.url) continue;
 
-        // Social platform items store the platform name as title — use author_name instead
-        const isSocial = item.service === 'Mastodon' || item.service === 'Bluesky'
-                      || item.title === 'Mastodon'   || item.title === 'Bluesky';
-        const displayTitle = isSocial
-            ? (item.author_name || item.title || item.url)
-            : (item.title || item.url);
+        const displayTitle = _collectionItemDisplayTitle(item);
 
         // For social items, build "Platform (@handle)" as the feed byline
+        const isSocial   = item.service === 'Mastodon' || item.service === 'Bluesky'
+                        || item.title   === 'Mastodon' || item.title   === 'Bluesky';
         const platform   = isSocial ? (item.title || item.service) : null;
         const handle     = isSocial && item.author_id ? `@${item.author_id}` : null;
         const feedDisplay = isSocial
@@ -355,7 +365,7 @@ function _showCollectionDetail(col, token, encKey) {
     shareBtn.title     = 'Share to chat';
     shareBtn.innerHTML = '<span class="material-icons md-18 md-light">chat</span>';
     shareBtn.onclick   = () => {
-        const items = col.items.map(i => ({ title: i.title || i.url, url: i.url }));
+        const items = col.items.map(i => ({ title: _collectionItemDisplayTitle(i), url: i.url }));
         sendShareMessage('collection', null, col.name, null, { items });
     };
 

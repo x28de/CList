@@ -963,8 +963,10 @@ body.chat-active .chat-only-btn { display: inline-flex; }
 .chat-share-card .chat-share-title a { color: #222; }
 .chat-share-card .chat-share-excerpt { color: #666; font-size: 12px; margin-bottom: 6px; word-break: break-word; }
 .chat-share-card .chat-share-items  { list-style: none; padding: 0; margin: 4px 0; }
-.chat-share-card .chat-share-items li { margin: 2px 0; }
+.chat-share-card .chat-share-items li { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 2px 0; font-size: 12px; }
+.chat-share-card .chat-share-items li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-share-card .chat-share-items a { color: #444; font-size: 12px; }
+.chat-share-card details summary { cursor: pointer; }
 .chat-share-card .chat-share-actions { margin-top: 6px; }
 .chat-share-card .chat-share-actions button { padding: 3px 10px; cursor: pointer; font-size: 12px; }
 html.dark-mode #left-content,

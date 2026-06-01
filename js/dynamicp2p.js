@@ -676,7 +676,7 @@ function appendShareCard(data, sender) {
   header.appendChild(document.createTextNode(` shared ${kindLabel}:`));
   card.appendChild(header);
 
-  if (data.title || data.url) {
+  if ((data.title || data.url) && data.kind !== 'collection') {
     const titleEl = document.createElement('div');
     titleEl.className = 'chat-share-title';
     if (data.url) {
@@ -693,29 +693,35 @@ function appendShareCard(data, sender) {
   }
 
   if (data.kind === 'collection' && Array.isArray(data.items) && data.items.length) {
+    const details = document.createElement('details');
+    details.className = 'chat-share-collection';
+    const summary = document.createElement('summary');
+    summary.className = 'chat-share-title';
+    summary.textContent = data.title || 'Untitled collection';
+    details.appendChild(summary);
+
     const ul = document.createElement('ul');
     ul.className = 'chat-share-items';
-    data.items.slice(0, 8).forEach(item => {
+    data.items.forEach(item => {
       const li = document.createElement('li');
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = item.title || item.url || '';
+      li.appendChild(nameSpan);
       if (item.url) {
-        const a = document.createElement('a');
-        a.href = item.url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.textContent = item.title || item.url;
-        li.appendChild(a);
-      } else {
-        li.textContent = item.title || '';
+        const btn = document.createElement('button');
+        btn.className = 'clist-action-btn';
+        btn.title = 'Open in new window';
+        btn.innerHTML = '<span class="material-icons md-18 md-light">launch</span>';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          window.open(item.url, '_blank', 'noopener,noreferrer');
+        });
+        li.appendChild(btn);
       }
       ul.appendChild(li);
     });
-    if (data.items.length > 8) {
-      const li = document.createElement('li');
-      li.style.color = '#888';
-      li.textContent = `… and ${data.items.length - 8} more`;
-      ul.appendChild(li);
-    }
-    card.appendChild(ul);
+    details.appendChild(ul);
+    card.appendChild(details);
   }
 
   if (data.excerpt && data.kind !== 'collection') {

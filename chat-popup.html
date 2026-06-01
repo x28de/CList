@@ -135,7 +135,7 @@
       hdr.innerHTML = `<strong>${escText(sender)}</strong> shared ${kindLabel}:`;
       card.appendChild(hdr);
 
-      if (title || url) {
+      if ((title || url) && kind !== 'collection') {
         const titleEl = document.createElement('div');
         titleEl.style.cssText = 'font-weight:500;margin-bottom:4px';
         titleEl.innerHTML = url
@@ -145,23 +145,37 @@
       }
 
       if (kind === 'collection' && Array.isArray(items) && items.length) {
+        const details = document.createElement('details');
+        details.style.cssText = 'margin-top:2px';
+        const summary = document.createElement('summary');
+        summary.style.cssText = 'font-weight:500;cursor:pointer;font-size:13px';
+        summary.textContent = title || 'Untitled collection';
+        details.appendChild(summary);
+
         const ul = document.createElement('ul');
         ul.style.cssText = 'list-style:none;padding:0;margin:4px 0';
-        items.slice(0, 8).forEach(item => {
+        items.forEach(item => {
           const li = document.createElement('li');
-          li.style.margin = '2px 0';
-          li.innerHTML = item.url
-            ? `<a href="${escText(item.url)}" target="_blank" rel="noopener noreferrer" style="color:#444;font-size:12px">${escText(item.title || item.url)}</a>`
-            : `<span style="font-size:12px">${escText(item.title || '')}</span>`;
+          li.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:6px;margin:2px 0;font-size:12px';
+          const nameSpan = document.createElement('span');
+          nameSpan.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+          nameSpan.textContent = item.title || item.url || '';
+          li.appendChild(nameSpan);
+          if (item.url) {
+            const btn = document.createElement('button');
+            btn.title = 'Open in new window';
+            btn.style.cssText = 'background:none;border:none;cursor:pointer;padding:2px;color:#555;flex-shrink:0';
+            btn.textContent = '↗';
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              window.open(item.url, '_blank', 'noopener,noreferrer');
+            });
+            li.appendChild(btn);
+          }
           ul.appendChild(li);
         });
-        if (items.length > 8) {
-          const li = document.createElement('li');
-          li.style.cssText = 'color:#888;font-size:12px';
-          li.textContent = `… and ${items.length - 8} more`;
-          ul.appendChild(li);
-        }
-        card.appendChild(ul);
+        details.appendChild(ul);
+        card.appendChild(details);
       }
 
       if (excerpt && kind !== 'collection') {

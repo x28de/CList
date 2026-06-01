@@ -1085,6 +1085,16 @@ function _buildAnnotationItem(anno, options = {}) {
     collectBtn.addEventListener('click', () => collectItem(itemID));
     statusActions.appendChild(collectBtn);
 
+    const chatShareBtn = document.createElement('button');
+    chatShareBtn.className = 'clist-action-btn';
+    chatShareBtn.title     = 'Share to chat';
+    chatShareBtn.innerHTML = '<span class="material-icons md-18 md-light">chat</span>';
+    chatShareBtn.addEventListener('click', () => {
+        const excerpt = bodyRaw.replace(/<[^>]+>/g, '').slice(0, 300) || null;
+        sendShareMessage('annotation', sourceUrl, title, excerpt);
+    });
+    statusActions.appendChild(chatShareBtn);
+
     // ── CList actions ───────────────────────────────────────────────────────
 
     const clistActions = document.createElement('div');

@@ -90,6 +90,9 @@
       if (type === 'chat-msg') {
         noConnectionEl.style.display = 'none';
         appendMessage(e.data);
+      } else if (type === 'chat-card') {
+        noConnectionEl.style.display = 'none';
+        appendCard(e.data);
       } else if (type === 'chat-state') {
         noConnectionEl.style.display = 'none';
         if (e.data.discussionName) {
@@ -110,6 +113,64 @@
       else div.style.textAlign = isOwn ? 'right' : 'left';
       messagesEl.appendChild(div);
       div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function escText(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function appendCard({ sender, kind, title, url, excerpt, items, isOwn }) {
+      const kindLabel = { item: 'an item', collection: 'a collection', annotation: 'an annotation' }[kind] || 'something';
+      const wrapper = document.createElement('div');
+      wrapper.style.textAlign = isOwn ? 'right' : 'left';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'display:inline-block;border:1px solid #ccc;border-radius:6px;padding:8px 12px;margin:4px 0;background:#f9f9f9;max-width:300px;font-size:13px;text-align:left';
+
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'color:#555;margin-bottom:4px';
+      hdr.innerHTML = `<strong>${escText(sender)}</strong> shared ${kindLabel}:`;
+      card.appendChild(hdr);
+
+      if (title || url) {
+        const titleEl = document.createElement('div');
+        titleEl.style.cssText = 'font-weight:500;margin-bottom:4px';
+        titleEl.innerHTML = url
+          ? `<a href="${escText(url)}" target="_blank" rel="noopener noreferrer">${escText(title || url)}</a>`
+          : escText(title || '');
+        card.appendChild(titleEl);
+      }
+
+      if (kind === 'collection' && Array.isArray(items) && items.length) {
+        const ul = document.createElement('ul');
+        ul.style.cssText = 'list-style:none;padding:0;margin:4px 0';
+        items.slice(0, 8).forEach(item => {
+          const li = document.createElement('li');
+          li.style.margin = '2px 0';
+          li.innerHTML = item.url
+            ? `<a href="${escText(item.url)}" target="_blank" rel="noopener noreferrer" style="color:#444;font-size:12px">${escText(item.title || item.url)}</a>`
+            : `<span style="font-size:12px">${escText(item.title || '')}</span>`;
+          ul.appendChild(li);
+        });
+        if (items.length > 8) {
+          const li = document.createElement('li');
+          li.style.cssText = 'color:#888;font-size:12px';
+          li.textContent = `… and ${items.length - 8} more`;
+          ul.appendChild(li);
+        }
+        card.appendChild(ul);
+      }
+
+      if (excerpt && kind !== 'collection') {
+        const ex = document.createElement('div');
+        ex.style.cssText = 'color:#666;font-size:12px;margin-top:4px;word-break:break-word';
+        ex.textContent = excerpt;
+        card.appendChild(ex);
+      }
+
+      wrapper.appendChild(card);
+      messagesEl.appendChild(wrapper);
+      wrapper.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
     function doSend() {

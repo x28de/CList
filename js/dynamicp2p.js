@@ -175,6 +175,14 @@ function playChat() {
         } else if (data.type === 'collab-invite') {
             const sender = usernames[conn.peer] || conn.peer;
             appendCollabInviteCard(data, sender);
+        } else if (data.type === 'share') {
+            if (!data.msgId) data = { ...data, msgId: `${conn.peer}-${Date.now()}-${Math.random()}` };
+            if (!processedMsgIds.has(data.msgId)) {
+              processedMsgIds.add(data.msgId);
+              const sender = data.username || usernames[conn.peer] || conn.peer;
+              appendShareCard(data, sender);
+              Object.values(connections).forEach(c => { if (c.open && c.peer !== conn.peer) c.send(data); });
+            }
         }
       });
 
@@ -451,6 +459,14 @@ function connectToPeer(peerId, discussionName) {
     } else if (data.type === 'collab-invite') {
         const sender = usernames[conn.peer] || conn.peer;
         appendCollabInviteCard(data, sender);
+    } else if (data.type === 'share') {
+        if (!data.msgId) data = { ...data, msgId: `${conn.peer}-${Date.now()}-${Math.random()}` };
+        if (!processedMsgIds.has(data.msgId)) {
+          processedMsgIds.add(data.msgId);
+          const sender = data.username || usernames[conn.peer] || conn.peer;
+          appendShareCard(data, sender);
+          Object.values(connections).forEach(c => { if (c.open && c.peer !== conn.peer) c.send(data); });
+        }
     }
   });
 
@@ -524,15 +540,8 @@ function _executeShareToChat(itemID) {
 
   const displayText = (ref.title && ref.title !== 'Mastodon' && ref.title !== 'Bluesky')
     ? ref.title : (ref.author_name || ref.url || itemID);
-  const link = ref.url
-    ? `<a href="${ref.url}" target="_blank" rel="noopener noreferrer">${displayText}</a>`
-    : displayText;
 
-  const message = excerpt ? `${excerpt}<br><br>${link}` : link;
-  sendMessage(message).catch(err => {
-    console.error('shareToChat failed:', err);
-    showStatusMessage('Failed to share to chat.');
-  });
+  sendShareMessage('item', ref.url, displayText, excerpt || null);
 }
 
 /**
@@ -581,6 +590,132 @@ function appendCollabInviteCard(invite, sender) {
   card.appendChild(btn);
   wrapper.appendChild(card);
   document.getElementById('chat-messages').appendChild(wrapper);
+  if (chatBc) {
+    const text = `${sender} shared a collab document: ${invite.title || invite.docId || 'a document'}`;
+    chatBc.postMessage({ type: 'chat-msg', html: `<em>${text}</em>`, isOwn: false, isEvent: false });
+  }
+}
+
+/**
+ * appendShareCard(data, sender)
+ *
+ * Renders a structured share card in #chat-messages. sender = null means the
+ * local user sent it (right-aligned). Also relays a simplified version to the
+ * chat popup via BroadcastChannel.
+ */
+function appendShareCard(data, sender) {
+  const isOwn = (sender === null);
+  const displaySender = isOwn ? `You (${myUsername})` : (sender || 'A peer');
+  const kindLabel = { item: 'an item', collection: 'a collection', annotation: 'an annotation' }[data.kind] || 'something';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.textAlign = isOwn ? 'right' : 'left';
+
+  const card = document.createElement('div');
+  card.className = 'chat-share-card';
+
+  const header = document.createElement('div');
+  header.className = 'chat-share-header';
+  const strong = document.createElement('strong');
+  strong.textContent = displaySender;
+  header.appendChild(strong);
+  header.appendChild(document.createTextNode(` shared ${kindLabel}:`));
+  card.appendChild(header);
+
+  if (data.title || data.url) {
+    const titleEl = document.createElement('div');
+    titleEl.className = 'chat-share-title';
+    if (data.url) {
+      const a = document.createElement('a');
+      a.href = data.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = data.title || data.url;
+      titleEl.appendChild(a);
+    } else {
+      titleEl.textContent = data.title || '';
+    }
+    card.appendChild(titleEl);
+  }
+
+  if (data.kind === 'collection' && Array.isArray(data.items) && data.items.length) {
+    const ul = document.createElement('ul');
+    ul.className = 'chat-share-items';
+    data.items.slice(0, 8).forEach(item => {
+      const li = document.createElement('li');
+      if (item.url) {
+        const a = document.createElement('a');
+        a.href = item.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = item.title || item.url;
+        li.appendChild(a);
+      } else {
+        li.textContent = item.title || '';
+      }
+      ul.appendChild(li);
+    });
+    if (data.items.length > 8) {
+      const li = document.createElement('li');
+      li.style.color = '#888';
+      li.textContent = `… and ${data.items.length - 8} more`;
+      ul.appendChild(li);
+    }
+    card.appendChild(ul);
+  }
+
+  if (data.excerpt && data.kind !== 'collection') {
+    const excerptEl = document.createElement('div');
+    excerptEl.className = 'chat-share-excerpt';
+    excerptEl.textContent = data.excerpt;
+    card.appendChild(excerptEl);
+  }
+
+  if ((data.kind === 'item' || data.kind === 'annotation') && data.url) {
+    const actionsEl = document.createElement('div');
+    actionsEl.className = 'chat-share-actions';
+    const loadBtn = document.createElement('button');
+    loadBtn.textContent = '→ Load to editor';
+    loadBtn.addEventListener('click', () => {
+      if (typeof pushReference === 'function') {
+        pushReference({ url: data.url, title: data.title || data.url, author_name: displaySender,
+          feed: 'Chat share', created_at: new Date().toISOString(), id: data.url, guid: data.url });
+        showStatusMessage('Added to references.');
+      }
+    });
+    actionsEl.appendChild(loadBtn);
+    card.appendChild(actionsEl);
+  }
+
+  wrapper.appendChild(card);
+  document.getElementById('chat-messages').appendChild(wrapper);
+
+  if (chatBc) {
+    chatBc.postMessage({ type: 'chat-card', sender: displaySender, kind: data.kind,
+      title: data.title || null, url: data.url || null, excerpt: data.excerpt || null,
+      items: data.items || null, isOwn });
+  }
+}
+
+/**
+ * sendShareMessage(kind, url, title, excerpt, extra)
+ *
+ * Sends a structured share card to all connected peers and renders it locally.
+ * kind: 'item' | 'collection' | 'annotation'
+ * extra: optional additional fields merged into the message (e.g. { items } for collections)
+ */
+function sendShareMessage(kind, url, title, excerpt, extra = {}) {
+  if (!p2pInitialized || !peer || !peer.id) {
+    showStatusMessage('Open chat first to share.');
+    return;
+  }
+  const msgId = `${peer.id}-${Date.now()}-${Math.random()}`;
+  processedMsgIds.add(msgId);
+  const msg = { type: 'share', kind, url, title, excerpt, username: myUsername, msgId, ...extra };
+  Object.values(connections).forEach(conn => {
+    if (conn.open) conn.send(msg);
+  });
+  appendShareCard(msg, null);
 }
 
 async function sendMessage(message) {

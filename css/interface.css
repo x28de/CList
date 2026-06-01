@@ -940,6 +940,28 @@ html.dark-mode #chat-section {
     background: #252525; border-color: #3a3a3a;
     scrollbar-color: #555 #2a2a2a;
 }
+
+/* ── Chat share cards ─────────────────────────────────────────────────────── */
+.chat-share-card {
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: #f9f9f9;
+    max-width: 320px;
+    font-size: 13px;
+    text-align: left;
+}
+.chat-share-card .chat-share-header { color: #555; margin-bottom: 4px; }
+.chat-share-card .chat-share-title  { font-weight: 500; margin-bottom: 4px; }
+.chat-share-card .chat-share-title a { color: #222; }
+.chat-share-card .chat-share-excerpt { color: #666; font-size: 12px; margin-bottom: 6px; word-break: break-word; }
+.chat-share-card .chat-share-items  { list-style: none; padding: 0; margin: 4px 0; }
+.chat-share-card .chat-share-items li { margin: 2px 0; }
+.chat-share-card .chat-share-items a { color: #444; font-size: 12px; }
+.chat-share-card .chat-share-actions { margin-top: 6px; }
+.chat-share-card .chat-share-actions button { padding: 3px 10px; cursor: pointer; font-size: 12px; }
 html.dark-mode #left-content,
 html.dark-mode #right-content { scrollbar-color: #555 #2a2a2a; }
 html.dark-mode #left-content::-webkit-scrollbar,

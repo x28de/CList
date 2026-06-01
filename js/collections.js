@@ -338,7 +338,17 @@ function _showCollectionDetail(col, token, encKey) {
     loadBtn.innerHTML = '<span class="material-icons md-18 md-light">arrow_forward</span>';
     loadBtn.onclick   = () => _loadCollectionIntoEditor(col.items);
 
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'clist-action-btn';
+    shareBtn.title     = 'Share to chat';
+    shareBtn.innerHTML = '<span class="material-icons md-18 md-light">chat</span>';
+    shareBtn.onclick   = () => {
+        const items = col.items.map(i => ({ title: i.title || i.url, url: i.url }));
+        sendShareMessage('collection', null, col.name, null, { items });
+    };
+
     rightZone.appendChild(loadBtn);
+    rightZone.appendChild(shareBtn);
 
     header.appendChild(leftZone);
     header.appendChild(titleEl);

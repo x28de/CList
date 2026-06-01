@@ -68,6 +68,8 @@
       font-size: 14px;
     }
     #sendButton:hover { background: rgb(60, 150, 65); }
+    #startDocButton { padding: 6px 10px; background: #888; color: white; border: none; border-radius: 3px; cursor: pointer; font-family: Roboto, sans-serif; font-size: 13px; }
+    #startDocButton:hover { background: #666; }
   </style>
 </head>
 <body>
@@ -78,6 +80,7 @@
   <div id="chat-input-row">
     <input type="text" id="messageInput" placeholder="Type a message…" autocomplete="off">
     <button id="sendButton">Send</button>
+    <button id="startDocButton" title="Start a shared document from this discussion">Start doc</button>
   </div>
 
   <script>
@@ -183,6 +186,9 @@
     }
 
     document.getElementById('sendButton').addEventListener('click', doSend);
+    document.getElementById('startDocButton').addEventListener('click', () => {
+      bc.postMessage({ type: 'start-collab-from-chat' });
+    });
     document.getElementById('messageInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') doSend();
     });

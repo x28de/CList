@@ -877,6 +877,42 @@ window.CList.schemas['Collab'] = {
         }
     }
 
+    // Opens a new collab document seeded with recent chat messages as context.
+    // Called by startCollabFromChat() in dynamicp2p.js.
+    window.openCollabFromChat = async function(contextHtml, discussionName) {
+        try {
+            if (typeof initializeEditor === 'function' && currentEditor !== 'collab') {
+                await initializeEditor('collab')
+            }
+            const now     = new Date()
+            const dateStr = now.toISOString().slice(0, 10)
+            const slug    = 'discussion-' + now.toISOString().slice(0, 19).replace(/[T:]/g, '-')
+            const docId   = await expandDocId(slug)
+            const title   = discussionName ? `Discussion: ${discussionName}` : `Discussion — ${dateStr}`
+            setDocTitle(slug)
+            currentDocTitle = title
+            await connectToDoc(docId)
+
+            if (contextHtml) {
+                setTimeout(() => {
+                    if (tiptapEditor && tiptapEditor.isEmpty) {
+                        tiptapEditor.commands.setContent(
+                            `<h2>${escapeHtml(title)}</h2><blockquote>${contextHtml}</blockquote><p></p>`
+                        )
+                        tiptapEditor.commands.focus('end')
+                    }
+                }, 800)
+            }
+
+            if (typeof window.sendCollabInvite === 'function') {
+                window.sendCollabInvite({ docId, title, mode: 'edit', server: currentWsUrl })
+            }
+        } catch (e) {
+            showStatusMessage('Failed to start document from chat: ' + e.message)
+            console.error('openCollabFromChat failed:', e)
+        }
+    }
+
     // Called by chat invite cards — switches to Collab editor and connects.
     window.openCollabInvite = async function(invite) {
         try {

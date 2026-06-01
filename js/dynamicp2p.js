@@ -338,6 +338,29 @@ window.getPeerAnnotationStores = function() {
 };
 
 /**
+ * startCollabFromChat()
+ *
+ * Collects recent plain-text chat messages (excluding share cards), then
+ * calls openCollabFromChat() to create a new Collab document seeded with
+ * that context. The collab invite is automatically broadcast to peers.
+ */
+function startCollabFromChat() {
+  if (typeof window.openCollabFromChat !== 'function') {
+    showStatusMessage('Collab editor not available.');
+    return;
+  }
+  const msgs = document.getElementById('chat-messages');
+  const contextHtml = msgs
+    ? Array.from(msgs.children)
+        .filter(el => !el.querySelector('.chat-share-card') && el.textContent.trim())
+        .slice(-15)
+        .map(el => `<p>${el.innerHTML}</p>`)
+        .join('')
+    : '';
+  window.openCollabFromChat(contextHtml || null, activeDiscussionName);
+}
+
+/**
  * openChatPopup()
  *
  * Opens chat-popup.html in a separate browser window and wires it up via
@@ -356,6 +379,8 @@ function openChatPopup() {
       chatBc.postMessage({ type: 'chat-state', discussionName: activeDiscussionName });
     } else if (e.data.type === 'send-msg') {
       if (e.data.message && p2pInitialized) sendMessage(e.data.message);
+    } else if (e.data.type === 'start-collab-from-chat') {
+      startCollabFromChat();
     } else if (e.data.type === 'popup-closed') {
       chatBc.close();
       chatBc = null;

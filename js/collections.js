@@ -351,7 +351,7 @@ function _showCollectionDetail(col, token, encKey) {
     };
 
     const shareBtn = document.createElement('button');
-    shareBtn.className = 'clist-action-btn';
+    shareBtn.className = 'clist-action-btn chat-only-btn';
     shareBtn.title     = 'Share to chat';
     shareBtn.innerHTML = '<span class="material-icons md-18 md-light">chat</span>';
     shareBtn.onclick   = () => {

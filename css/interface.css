@@ -941,6 +941,11 @@ html.dark-mode #chat-section {
     scrollbar-color: #555 #2a2a2a;
 }
 
+/* ── Chat-conditional buttons ────────────────────────────────────────────── */
+/* .chat-only-btn buttons are hidden until the user joins a discussion.       */
+.chat-only-btn { display: none; }
+body.chat-active .chat-only-btn { display: inline-flex; }
+
 /* ── Chat share cards ─────────────────────────────────────────────────────── */
 .chat-share-card {
     display: inline-block;

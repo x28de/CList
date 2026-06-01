@@ -1098,7 +1098,7 @@ function _buildAnnotationItem(anno, options = {}) {
     statusActions.appendChild(collectBtn);
 
     const chatShareBtn = document.createElement('button');
-    chatShareBtn.className = 'clist-action-btn';
+    chatShareBtn.className = 'clist-action-btn chat-only-btn';
     chatShareBtn.title     = 'Share to chat';
     chatShareBtn.innerHTML = '<span class="material-icons md-18 md-light">chat</span>';
     chatShareBtn.addEventListener('click', () => {

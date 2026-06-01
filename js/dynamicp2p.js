@@ -456,6 +456,7 @@ function connectToPeer(peerId, discussionName) {
     
     toggleDiv('discussion-button-div');
     toggleDiv('end-discussion-div');
+    document.body.classList.add('chat-active');
     startHeartbeat(); // Start the heartbeat to keep the discussion alive
     propagatePeerList();
   });
@@ -861,6 +862,7 @@ function advertiseDiscussion() {
       if (discussionName) { activeDiscussionName = discussionName; }
       toggleDiv('discussion-button-div');
       toggleDiv('end-discussion-div');
+      document.body.classList.add('chat-active');
       startHeartbeat();
     } else {
       return response.json().then((data) => {
@@ -1023,6 +1025,7 @@ function endDiscussion() {
       activeDiscussionName = null; // Clear the active discussion name.
       toggleDiv('discussion-button-div');
       toggleDiv('end-discussion-div');
+      document.body.classList.remove('chat-active');
       refreshDiscussions(); // Refresh available discussions.
     } else {
       throw new Error('Failed to end discussion');

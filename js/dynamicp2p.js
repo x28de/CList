@@ -30,6 +30,7 @@ let myPublicKeyJwk = null; // Ed25519 public key JWK (from DID document)
 let myIdentityKey  = null; // Ed25519 CryptoKey for signing (private, decrypted from kvstore)
 let peerDids          = {}; // peerId → did:key
 let peerPublicKeyJwks = {}; // peerId → publicKeyJwk (for signature verification)
+let peerAnnotationStores = {}; // peerId → annotation store URL (announced on connect)
 
 let chatBc = null; // BroadcastChannel to chat popup window, null when no popup is open
 
@@ -125,6 +126,7 @@ function playChat() {
         knownPeers.add(conn.peer);
         conn.send({ type: 'username-update', username: myUsername, did: myDidKey, didWeb: myDid, publicKeyJwk: myPublicKeyJwk });
         propagatePeerList(conn.peer);
+        _sendServiceAnnounce(conn);
       });
 
       conn.on('data', async (data) => {
@@ -183,6 +185,8 @@ function playChat() {
               appendShareCard(data, sender);
               Object.values(connections).forEach(c => { if (c.open && c.peer !== conn.peer) c.send(data); });
             }
+        } else if (data.type === 'service-announce') {
+            if (data.annotationStore) peerAnnotationStores[conn.peer] = data.annotationStore;
         }
       });
 
@@ -193,6 +197,7 @@ function playChat() {
         delete usernames[conn.peer];
         delete peerDids[conn.peer];
         delete peerPublicKeyJwks[conn.peer];
+        delete peerAnnotationStores[conn.peer];
         propagatePeerList();
       });
 
@@ -312,6 +317,26 @@ function appendMessage(message, isOwn = false, isEvent = false) {
   if (chatBc) chatBc.postMessage({ type: 'chat-msg', html: div.innerHTML, isOwn, isEvent });
 }
 
+// Returns this user's annotation store URL from their configured Annotate account, or null.
+function _getMyAnnotationStoreUrl() {
+  const acct = (window.CList.accounts || [])
+    .map(a => (typeof parseAccountValue === 'function' ? parseAccountValue(a) : null))
+    .filter(Boolean)
+    .find(d => d.type === 'Annotate' && d.instance);
+  return acct ? acct.instance : null;
+}
+
+// Sends this user's annotation store URL to a newly connected peer.
+function _sendServiceAnnounce(conn) {
+  const storeUrl = _getMyAnnotationStoreUrl();
+  if (storeUrl) conn.send({ type: 'service-announce', annotationStore: storeUrl });
+}
+
+// Returns the annotation store URLs currently announced by connected peers.
+window.getPeerAnnotationStores = function() {
+  return Object.values(peerAnnotationStores).filter(Boolean);
+};
+
 /**
  * openChatPopup()
  *
@@ -401,8 +426,8 @@ function connectToPeer(peerId, discussionName) {
     
     // Send your own username to the remote peer.
     conn.send({ type: 'username-update', username: myUsername, did: myDidKey, didWeb: myDid, publicKeyJwk: myPublicKeyJwk });
-    // Request the remote peer's username.
     conn.send({ type: 'request-username' });
+    _sendServiceAnnounce(conn);
     
     toggleDiv('discussion-button-div');
     toggleDiv('end-discussion-div');
@@ -467,6 +492,8 @@ function connectToPeer(peerId, discussionName) {
           appendShareCard(data, sender);
           Object.values(connections).forEach(c => { if (c.open && c.peer !== conn.peer) c.send(data); });
         }
+    } else if (data.type === 'service-announce') {
+        if (data.annotationStore) peerAnnotationStores[conn.peer] = data.annotationStore;
     }
   });
 
@@ -477,6 +504,7 @@ function connectToPeer(peerId, discussionName) {
     delete usernames[peerId];
     delete peerDids[peerId];
     delete peerPublicKeyJwks[peerId];
+    delete peerAnnotationStores[peerId];
     propagatePeerList();
   });
 
@@ -963,6 +991,7 @@ function endDiscussion() {
       Object.keys(connections).forEach(k => delete connections[k]);
       Object.keys(usernames).forEach(k => delete usernames[k]);
       Object.keys(peerDids).forEach(k => delete peerDids[k]);
+      Object.keys(peerAnnotationStores).forEach(k => delete peerAnnotationStores[k]);
       knownPeers.clear();
       console.log('Discussion ended successfully!');
       appendMessage(`Ended discussion: ${discussionName}`);

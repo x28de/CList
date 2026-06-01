@@ -569,7 +569,8 @@ async function _getFollowedDids() {
 }
 window._getFollowedDids = _getFollowedDids;
 
-// Returns the combined list of local + federated annotation accounts, deduplicated by instance URL.
+// Returns the combined list of local + federated + chat-peer annotation accounts,
+// deduplicated by instance URL.
 async function _allAnnotationAccounts() {
     const local = (window.CList.accounts || [])
         .map(a => parseAccountValue(a))
@@ -577,10 +578,21 @@ async function _allAnnotationAccounts() {
     const federated = await _getFederatedAnnotationAccounts();
     const hasConfiguredHypothesis = local.some(a => a.type === 'Hypothesis');
     const seen = new Set(local.map(a => a.instance));
-    return [...local, ...federated.filter(a => {
+    const combined = [...local, ...federated.filter(a => {
         if (a.type === 'Hypothesis') return !hasConfiguredHypothesis;
         return !seen.has(a.instance);
     })];
+    // Add annotation stores announced by current chat peers (dynamicp2p.js).
+    if (typeof window.getPeerAnnotationStores === 'function') {
+        const allSeen = new Set(combined.map(a => a.instance));
+        window.getPeerAnnotationStores().forEach(url => {
+            if (!allSeen.has(url)) {
+                combined.push({ instance: url, _peer: true });
+                allSeen.add(url);
+            }
+        });
+    }
+    return combined;
 }
 
 // ── Batch annotation check (runs after feed renders) ──────────────────────────

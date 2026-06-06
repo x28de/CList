@@ -8,7 +8,7 @@
         logoSrc: 'assets/icons/duckduckgo.svg',
         statusActions: (item,itemID,itemLink) => {
             return `
-            <button class="material-icons md-18 md-light" onClick="window.open('${itemLink}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>`;
+            <button class="clist-action-btn" title="Open in browser" onClick="window.open('${itemLink}', '_blank', 'width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>`;
         },
         search: async (baseURL, accessToken) => {
             searchString = finderString();

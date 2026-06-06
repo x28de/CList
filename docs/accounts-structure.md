@@ -48,6 +48,7 @@ The `permissions` string is checked with `includes()`, so a single account can c
 | `g`  | `chatgpt.js` | Used as the **AI assistant** |
 | `z`  | `summarize.js` | Used as the **Summarize** service |
 | `s`  | `rss.js` | Marks an RSS relay / OPML subscription source |
+| `b`  | `collections.js`, future publish flows | Marks a bin/publish account; shown in the publish-to selector of the collection editor and any other "publish page" UI |
 
 ---
 
@@ -112,6 +113,10 @@ New account creation for Mastodon is special-cased in `selectAccountType()` in `
 | `annotate.js` | Annotate | Store URL | title, permissions | — |
 | `hypothesis.js` | Hypothesis | Server URL | title, username, apiKey, permissions | — |
 | `kvstore.js` | Proxyp | Proxy URL | title, permissions | — (no id field) |
+| `jsonbin.js` | JSONBin | Label | title, permissions, id (X-Master-Key) | — (`b` flag) |
+| `gist.js` | Gist | Label | title, permissions, id (GitHub PAT) | — (`b` flag) |
+| `0x0.js` | 0x0 | Label | title, permissions | — (no id; anonymous; `b` flag) |
+| `clistbin.js` | CListBin | Instance URL | title, permissions, id (Bearer token) | — (`b` flag) |
 
 AI accounts have `instanceFromKey: false` — `instance` (the API URL) is an explicit editable field, separate from the project key.
 

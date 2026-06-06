@@ -91,19 +91,19 @@ const _interfaceSteps = [
     {
         targetId: 'read-pane',
         fullHeight: true,
-        text: 'Click &#9654; on any item to load it into the Write pane. Watch:',
+        text: 'Click → on any item to write about it in the Write pane. Watch:',
         onEnter() {
             _demoAfter(600, () => {
-                const btn = document.querySelector('button[title="Load in editor"]');
+                const btn = document.querySelector('button[title="Write about this"]');
                 _flashEl(btn, true);
             });
             _demoAfter(1400, () => {
-                const btn = document.querySelector('button[title="Load in editor"]');
+                const btn = document.querySelector('button[title="Write about this"]');
                 _flashEl(btn, false);
                 _hideTourChrome();
             });
             _demoAfter(1700, () => {
-                const btn = document.querySelector('button[title="Load in editor"]');
+                const btn = document.querySelector('button[title="Write about this"]');
                 if (btn) btn.click();
             });
         },
@@ -115,16 +115,16 @@ const _interfaceSteps = [
         text: 'You can keep adding — let\'s load a second item too. Watch:',
         onEnter() {
             _demoAfter(600, () => {
-                const btns = document.querySelectorAll('button[title="Load in editor"]');
+                const btns = document.querySelectorAll('button[title="Write about this"]');
                 _flashEl(btns[1] || btns[0], true);
             });
             _demoAfter(1400, () => {
-                const btns = document.querySelectorAll('button[title="Load in editor"]');
+                const btns = document.querySelectorAll('button[title="Write about this"]');
                 _flashEl(btns[1] || btns[0], false);
                 _hideTourChrome();
             });
             _demoAfter(1700, () => {
-                const btns = document.querySelectorAll('button[title="Load in editor"]');
+                const btns = document.querySelectorAll('button[title="Write about this"]');
                 const btn  = btns[1] || btns[0];
                 if (btn) btn.click();
             });

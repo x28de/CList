@@ -137,17 +137,19 @@ window.CList.ui.listing = function makeListing(
     feedEl.textContent = itemFeed || 'Unknown Source';
     summaryDiv.appendChild(feedEl);
 
-    const authorHandler = window.CList.readers[service]?.onAuthorClick;
-    if (itemAuthor && authorHandler) {
-        summaryDiv.appendChild(document.createTextNode(' · '));
-        const authorEl = document.createElement('a');
-        authorEl.href = '#';
-        authorEl.title = 'Show items by this author';
-        authorEl.onclick = (e) => { e.preventDefault(); authorHandler(item); };
-        authorEl.textContent = itemAuthor;
-        summaryDiv.appendChild(authorEl);
+    if (!item.noSummaryDesc) {
+        const authorHandler = window.CList.readers[service]?.onAuthorClick;
+        if (itemAuthor && authorHandler) {
+            summaryDiv.appendChild(document.createTextNode(' · '));
+            const authorEl = document.createElement('a');
+            authorEl.href = '#';
+            authorEl.title = 'Show items by this author';
+            authorEl.onclick = (e) => { e.preventDefault(); authorHandler(item); };
+            authorEl.textContent = itemAuthor;
+            summaryDiv.appendChild(authorEl);
+        }
+        summaryDiv.appendChild(document.createTextNode(': ' + (itemDesc || 'No Summary')));
     }
-    summaryDiv.appendChild(document.createTextNode(': ' + (itemDesc || 'No Summary')));
 
     // Build content div (if applicable)
     let contentDiv = null;
@@ -157,7 +159,7 @@ window.CList.ui.listing = function makeListing(
         contentDiv.style.display = 'none';
         contentDiv.innerHTML = `
             <div class='status-actions'>
-            <button class="material-icons md-18 md-light" onclick="toggleFormDisplay('${itemID}-content');toggleFormDisplay('${itemID}-summary');">zoom_in_map</button>
+            <button class="clist-action-btn" title="Collapse" onclick="toggleFormDisplay('${itemID}-content');toggleFormDisplay('${itemID}-summary');"><span class="material-icons md-18 md-light">zoom_in_map</span></button>
             </div>
             <div class='post'>
                 <h2 class='post-title'>${_he(itemTitle)}</h2>
@@ -307,16 +309,16 @@ window.CList.ui.feedHeader = function(type, typevalue) {
         const actions = document.createElement("p");
         actions.className = "clist-actions";
         actions.innerHTML = `
-            <button class="material-icons md-18 md-light" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
-            <button class="material-icons md-18 md-light" title="Load thread into editor" onClick="handleMastodonAction('thread', 'load',this.parentElement.parentElement)">arrow_right</button>
+            <button class="clist-action-btn" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')"><span class="material-icons md-18 md-light">play_for_work</span></button>
+            <button class="clist-action-btn" title="Load thread into editor" onClick="handleMastodonAction('thread', 'load',this.parentElement.parentElement)"><span class="material-icons md-18 md-light">arrow_right</span></button>
             `;
         feedHeaderDiv.appendChild(actions);
     } else if (type === 'Bluesky Thread') {
         const actions = document.createElement("p");
         actions.className = "clist-actions";
         actions.innerHTML = `
-            <button class="material-icons md-18 md-light" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')">play_for_work</button>
-            <button class="material-icons md-18 md-light" title="Load into editor" onClick="loadContentToEditor('feed-container')">arrow_right</button>
+            <button class="clist-action-btn" title="Summarize thread" onClick="handleSummarize('feed-container','feed-summary','thread')"><span class="material-icons md-18 md-light">play_for_work</span></button>
+            <button class="clist-action-btn" title="Load into editor" onClick="loadContentToEditor('feed-container')"><span class="material-icons md-18 md-light">arrow_right</span></button>
             `;
         feedHeaderDiv.appendChild(actions);
     }
@@ -421,6 +423,7 @@ window.CList.ui.renderFeed = async function(rawItems, container, {
     if (onLoadMore) {
         const btn = document.createElement('button');
         btn.id = loadMoreBtnId;
+        btn.className = 'btn';
         btn.textContent = 'Load More';
         btn.onclick = onLoadMore;
         container.appendChild(btn);

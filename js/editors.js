@@ -468,6 +468,28 @@ async function initializeEditor(editorType) {
         return;
     }
 
+    // Restore tags row (collection editor hides it; all others need it)
+    const writeTagsEl = document.getElementById('write-tags');
+    if (writeTagsEl) writeTagsEl.style.display = '';
+
+    // Populate format picker from this handler's formats list
+    const formatSelectEl = document.getElementById('write-format');
+    if (formatSelectEl) {
+        const formats = handler.formats || [];
+        formatSelectEl.innerHTML = '';
+        if (formats.length) {
+            formats.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id;
+                opt.textContent = f.label;
+                formatSelectEl.appendChild(opt);
+            });
+            formatSelectEl.style.display = '';
+        } else {
+            formatSelectEl.style.display = 'none';
+        }
+    }
+
     // Close all editors
     // Note that we do not remove the editors, we just hide them
     const writePaneContent = window.CList.ui.view.writePaneContent;
@@ -475,7 +497,7 @@ async function initializeEditor(editorType) {
         Array.from(writePaneContent.children).forEach(child => {
             child.style.display = 'none';
         });
-    } else {   
+    } else {
         console.error("Write pane content not found. Obviously a major programming error.");
         showStatusMessage('Write pane not found — please reload the page.');
         return;

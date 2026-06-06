@@ -59,10 +59,6 @@ window.CList.schemas['Collab'] = {
             #collab-who { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex: 1; padding: 0 4px; }
             .collab-user { font-size: 0.75em; white-space: nowrap; }
             #collab-status { font-size: 0.75em; color: #888; }
-            .collab-share-btn { font-size: 0.8em; padding: 2px 8px; border: 1px solid #ccc;
-                border-radius: 3px; background: #f5f5f5; color: #333; cursor: pointer; }
-            .collab-share-btn:hover { background: #e8e8e8; }
-            .collab-share-btn:disabled { opacity: 0.6; cursor: default; }
             #collab-editor-container { flex: 1; overflow-y: auto; border: 1px solid #ddd;
                                        border-radius: 4px; background: #fff; }
             #tiptap-editor .ProseMirror { outline: none; min-height: 200px; padding: 10px;
@@ -95,6 +91,7 @@ window.CList.schemas['Collab'] = {
     let currentWsUrl       = COLLAB_WS_URL  // updated each time we connect
     let cachedDidKey       = null  // did:key fetched from user's DID document, cached
     let dupCheckTimer      = null  // debounce timer for duplicate-title check
+    let sharedRefs         = null  // Y.Map synced across all collaborators: url → JSON ref string
 
     // --- Load CDN dependencies lazily ---
     // esm.sh resolves peer dependencies consistently so Y.Doc instances are shared.
@@ -247,6 +244,7 @@ window.CList.schemas['Collab'] = {
         const { Editor, StarterKit, Collaboration, Link, Y } = await loadDeps()
         if (tiptapEditor) { tiptapEditor.destroy(); tiptapEditor = null }
         const ydoc = new Y.Doc()
+        sharedRefs = ydoc.getMap('clist_refs')
         tiptapEditor = new Editor({
             element:    document.getElementById('tiptap-editor'),
             editable:   true,
@@ -433,8 +431,8 @@ window.CList.schemas['Collab'] = {
             <p class="overlay-instructions">Create a message to share this link, then Post it to any of your accounts using 'Post'.</p>
             <textarea id="collab-share-post-editor"></textarea>
             <div class="overlay-toolbar">
-                <button class="collab-share-btn" id="collab-share-post-btn">Post</button>
-                <button class="collab-share-btn" id="collab-share-close-btn">Cancel</button>
+                <button class="btn-small" id="collab-share-post-btn">Post</button>
+                <button class="btn-small" id="collab-share-close-btn">Cancel</button>
             </div>
         `
         document.getElementById('collabDiv').appendChild(overlay)
@@ -514,7 +512,7 @@ window.CList.schemas['Collab'] = {
         function linkRow(mode, label) {
             const link = getCollabShareLink(mode)
             const chatBtn = chatActive
-                ? `<button class="collab-share-btn" onclick="window.shareCollabViaChat('${mode}')">Chat</button>`
+                ? `<button class="btn-small" onclick="window.shareCollabViaChat('${mode}')">Chat</button>`
                 : ''
             return `
                 <div style="margin-bottom:14px">
@@ -523,11 +521,11 @@ window.CList.schemas['Collab'] = {
                         <code style="flex:1;font-size:11px;background:#f5f5f5;padding:3px 6px;
                                      border:1px solid #ddd;border-radius:3px;overflow:hidden;
                                      white-space:nowrap;text-overflow:ellipsis">${link}</code>
-                        <button class="collab-share-btn" onclick="window.copyCollabLink('${mode}')">Copy</button>
+                        <button class="btn-small" onclick="window.copyCollabLink('${mode}')">Copy</button>
                     </div>
                     <div style="display:flex;gap:5px">
                         ${chatBtn}
-                        <button class="collab-share-btn" onclick="window.openCollabSharePost('${mode}')">Post</button>
+                        <button class="btn-small" onclick="window.openCollabSharePost('${mode}')">Post</button>
                     </div>
                 </div>`
         }
@@ -593,6 +591,16 @@ window.CList.schemas['Collab'] = {
         const userColor = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')
 
         const ydoc = new Y.Doc()
+        sharedRefs = ydoc.getMap('clist_refs')
+        sharedRefs.observe((event) => {
+            event.keysChanged.forEach(url => {
+                const jsonStr = sharedRefs.get(url)
+                if (!jsonStr) return
+                try {
+                    if (typeof pushReference === 'function') pushReference(JSON.parse(jsonStr))
+                } catch { /* skip corrupt entries */ }
+            })
+        })
 
         hocuspocusProvider = new HocuspocusProvider({
             url:        wsUrl,
@@ -717,6 +725,7 @@ window.CList.schemas['Collab'] = {
                         <div id="collab-doc-picker">
                             <input id="collab-doc-id" type="hidden">
                             <button id="collab-invite-btn" title="Share this document">Share</button>
+                            <button id="collab-annotate-btn" title="Annotate this document">Annotate</button>
                         </div>
                         <div id="collab-doc-warning" style="display:none;font-size:0.8em;color:#a00;padding:2px 0;gap:6px;align-items:center"></div>
                         <div id="collab-format-toolbar"></div>
@@ -770,6 +779,26 @@ window.CList.schemas['Collab'] = {
                     if (!currentDocId) await connectFromInput()
                     if (currentDocId) shareCollabDoc()
                 })
+
+                document.getElementById('collab-annotate-btn').addEventListener('click', () => {
+                    if (!currentDocId) {
+                        showStatusMessage('Open a document first before annotating.')
+                        return
+                    }
+                    const url   = getCollabShareLink('read')
+                    const title = currentDocTitle || currentDocId
+                    if (typeof pushReference === 'function') {
+                        pushReference({ url, title, service: 'Collab', feed: 'Collab', author_name: '', created_at: new Date().toISOString() })
+                    }
+                    if (typeof loadContent === 'function') {
+                        loadContent({ type: 'text/plain', value: '' }, null)
+                    }
+                    if (typeof snapPanes === 'function' && typeof mainContent !== 'undefined' && typeof readPane !== 'undefined') {
+                        const ratio = readPane.getBoundingClientRect().width / mainContent.getBoundingClientRect().width
+                        if (ratio > 0.65) snapPanes('left')
+                    }
+                })
+
                 collabDiv.dataset.wired = '1'
             }
 
@@ -817,6 +846,11 @@ window.CList.schemas['Collab'] = {
                 const reference = createReference(itemId, editorDiv)
                 displayCurrentReference(reference, editorDiv)
                 displayReferences(editorDiv)
+                if (sharedRefs) {
+                    const specificEl = document.getElementById(itemId)
+                    const ref = specificEl?.reference
+                    if (ref?.url) sharedRefs.set(ref.url, JSON.stringify(ref))
+                }
             }
         },
     }

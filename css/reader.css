@@ -1,45 +1,3 @@
-        /* Style for the whole page */
-        body {
-            font-family: 'Roboto', sans-serif;
-            font-size: 14px;            /* Slightly larger text */
-        }
-        
-
-        h1,h2,h3 {
-            font-family: 'Oswald', sans-serif;
-            font-size: 18px;            /* Slightly larger text */
-
-        }
-
-  
-        /* Style for buttons */
-        button {
-            background-color: var(--highlight-color);  /* Green background */
-            color: white;               /* White text */
-            padding: 5px 10px;         /* Padding around the button */
-            border: none;               /* No border */
-            border-radius: 3px;         /* Rounded corners */
-            cursor: pointer;            /* Pointer cursor on hover */
-            font-size: 14px;            /* Slightly larger text */
-            margin-right: 3px;          /* space between buttons */
-        }
-    
-        /* Change background on hover for buttons */
-        button:hover {
-            filter: brightness(0.85);
-        }
-    
-        /* Input fields */
-        select, input[type="text"],  input[type="password"], textarea {
-            width: 100%;                /* Full width */
-            padding: 10px;              /* Padding inside the input */
-            margin: 8px 0;              /* Margin between elements */
-            box-sizing: border-box;      /* Ensures padding doesn’t affect width */
-            border: 1px solid #ccc;      /* Light border */
-            border-radius: 4px;          /* Rounded corners */
-        }
-
-        /* Select fields */
 
         /* Style for the status box */
         .status-box {
@@ -85,7 +43,8 @@
             font-size: 0.75rem;
         }
 
-        .clist-actions button.action-active {
+        .clist-actions button.action-active .material-icons,
+        .status-actions button.action-active .material-icons {
             color: rgb(220, 130, 20);
         }
 
@@ -150,9 +109,6 @@
             background-color: #efede9;
         }
 
-        .status-actions button.action-active {
-            color: rgb(220, 130, 20);
-        }
 
         /* Style for the clist action buttons */
         .clist-actions {
@@ -300,13 +256,11 @@
         }
         
         #audio-left-close-button,#chat-left-close-button {
-            padding: 5px 10px;         /* Padding around the button */
-            border: none;               /* No border */
-            border-radius: 3px;         /* Rounded corners */
-            cursor: pointer;            /* Pointer cursor on hover */
-            font-size: 14px;            /* Slightly larger text */
-            margin-right: 3px;          /* space between buttons */
-            color: #333;               /* White text */
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.875rem;
+            margin-right: 3px;
+            color: #333;
         }
         
         #accounts-left-close-button:hover,#audio-left-close-button:hover,#chat-left-close-button:hover,#read-left-close-button:hover,#find-left-close-button:hover,#save-right-close-button:hover,#post-right-close-button:hover {
@@ -401,20 +355,19 @@
         @media (max-width: 768px) {
 
             body {
-                font-size: 16px;            /* Slightly larger text */
+                font-size: 1rem;            /* Slightly larger text */
             }
             
     
             h1,h2,h3 {
-                font-family: 'Oswald', sans-serif;
-                font-size: 24px;            /* Slightly larger text */
-    
+                font-size: 1.5rem;            /* Slightly larger text */
+
             }
     
       
             /* Style for buttons */
             button {
-                font-size: 16px;            /* Slightly larger text */
+                font-size: 1rem;            /* Slightly larger text */
             }
 
         }
@@ -493,12 +446,10 @@
 }
 
 .annotation-thread-close {
-    background: none;
     border: 1px solid #aaa;
     border-radius: 3px;
     font-size: 0.8rem;
     padding: 1px 6px;
-    cursor: pointer;
     color: #555;
     line-height: 1.4;
     flex-shrink: 0;
@@ -619,11 +570,11 @@ html.dark-mode .annotation-feed-author-banner {
     display: block;
     width: 100%;
     text-align: left;
-    padding: 8px 14px;
+    padding: var(--pad-v) var(--pad-h);
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     color: inherit;
 }
 .collection-pick-btn:hover { background: #f5f5f5; }
@@ -636,10 +587,7 @@ html.dark-mode .annotation-feed-author-banner {
 }
 .collection-picker-new .input-field {
     flex: 1;
-    padding: 5px 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.875rem;
+    margin: 0;
 }
 
 /* ── Collection panel (My Collections feed view) ─────────────────────────── */
@@ -666,7 +614,7 @@ html.dark-mode .collection-detail-header { border-bottom-color: #2a2a2a; backgro
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    padding: 8px 12px;
+    padding: 0 12px;
     gap: 8px;
 }
 .saved-collection-name { flex: 1; font-weight: 500; cursor: pointer; }
@@ -680,25 +628,12 @@ html.dark-mode .collection-detail-header { border-bottom-color: #2a2a2a; backgro
     flex-basis: 100%;
     padding: 4px 0 6px;
 }
-.collection-confirm-btn { margin: 0; padding: 3px 10px; font-size: 0.8rem; }
-
 .collection-items-expanded { padding: 0 0 8px; }
 .collection-items-expanded .btn { margin: 8px 12px 4px; }
 
-.btn {
-    display: inline-block;
-    padding: 6px 14px;
-    background: rgb(81,177,88);
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    margin: 8px 12px;
-}
-.btn:hover { background: rgb(55,145,61); }
-.btn.btn-secondary { background: #888; }
-.btn.btn-secondary:hover { background: #666; }
+
+/* Legacy alias — existing delete-confirmation code uses this class. */
+.collection-confirm-btn   { padding: 3px 10px; font-size: 0.8rem; margin: 0; }
 
 html.dark-mode .collection-picker {
     background: #1e1e1e; border-color: #444; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
@@ -808,3 +743,84 @@ html.dark-mode .write-tags-new-col { border-top-color: #2a2a2a; color: #ccc; }
 
 
 
+
+
+/* ── Collection editor (write-pane) ─────────────────────────────────────────── */
+
+.collection-editor-list {
+    padding: 8px 12px;
+    overflow-y: auto;
+}
+
+.collection-editor-entry {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    background: #fff;
+}
+.collection-editor-entry-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    cursor: pointer;
+    user-select: none;
+}
+.collection-editor-entry-bar:hover { background: #f5f5f5; }
+.collection-editor-chevron {
+    font-size: 1.125rem;
+    color: #888;
+    flex-shrink: 0;
+}
+.collection-editor-entry-label {
+    flex: 1;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.collection-editor-entry-fields {
+    padding: 8px 12px 10px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.collection-editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.collection-editor-field label {
+    font-size: 0.75rem;
+    color: #666;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.collection-editor-input {
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.collection-editor-input:focus {
+    outline: none;
+    border-color: var(--highlight-color);
+}
+textarea.collection-editor-input {
+    min-height: 60px;
+    resize: vertical;
+}
+
+/* Dark mode */
+html.dark-mode .collection-editor-entry  { background: #1e1e1e; border-color: #3a3a3a; }
+html.dark-mode .collection-editor-entry-bar:hover { background: #272727; }
+html.dark-mode .collection-editor-entry-fields { border-top-color: #2a2a2a; }
+html.dark-mode .collection-editor-field label  { color: #999; }
+html.dark-mode .collection-editor-input { background: #1a1a1a; border-color: #444; color: #ddd; }
+html.dark-mode .collection-editor-chevron { color: #666; }

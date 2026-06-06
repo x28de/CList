@@ -170,18 +170,19 @@ Per-post state (IDs, URIs, flags) should be stored on a service-specific sub-obj
 statusActions: (item, _itemID, _itemUrl) => {
     const { postId, isLiked } = item.myservice || {};
     return `
-        <button class="material-icons md-18 md-light${isLiked ? ' action-active' : ''}"
-                title="Like"
+        <button class="clist-action-btn${isLiked ? ' action-active' : ''}" title="Like"
                 onclick="handleMyServiceAction('${_heJs(postId)}', 'like', this)">
-            favorite
+            <span class="material-icons md-18 md-light">favorite</span>
         </button>
-        <button class="material-icons md-18 md-light" title="Open in browser"
+        <button class="clist-action-btn" title="Open in browser"
                 onclick="window.open('${_heJs(_itemUrl)}','_blank','width=800,height=600,scrollbars=yes')">
-            launch
+            <span class="material-icons md-18 md-light">launch</span>
         </button>
     `;
 },
 ```
+
+The `action-active` class goes on the **outer button**, not the icon span — see the CSS conventions section below.
 
 ### Normalization function
 
@@ -363,3 +364,47 @@ Follow the rules in `docs/error-handling.md`. Key points for service files:
 - **Every `catch` block must produce visible feedback** — `showStatusMessage` for transient errors; `showServiceError` for hard failures (feed loads, authentication).
 - For credential setup functions that may throw: let them throw, and catch in the caller where the error display lives.
 - Keep `console.error()` alongside any UI message — don't remove it.
+
+---
+
+## 8. CSS and styling
+
+**Do not create service-specific CSS classes or add style attributes inline.** All visual styling must use the global classes defined in `reader.css` and `interface.css`. This applies to new services and to modifications of existing ones.
+
+### Buttons
+
+| Use case | Class(es) |
+|---|---|
+| Icon-only action button | `clist-action-btn` + inner `<span class="material-icons md-18 md-light">` |
+| Primary labelled button | `btn` |
+| Compact labelled button | `btn-small` |
+| Secondary / cancel button | `btn-secondary` (combine with `btn` or `btn-small`) |
+
+`btn` and `btn-small` both render with `--highlight-color` background and white text. `btn-secondary` overrides to grey. `btn-small` is for contextual buttons inside panels (collection picker, import controls, etc.).
+
+Toggled state (liked, bookmarked, etc.) is shown by adding `action-active` to the **outer button**:
+
+```html
+<button class="clist-action-btn action-active" title="Unlike">
+    <span class="material-icons md-18 md-light">favorite</span>
+</button>
+```
+
+The CSS rule targets `.material-icons` inside an `action-active` button to show the orange tint. Do not add the class to the span directly.
+
+### Typography
+
+All text inherits from `:root` via `font: inherit` on `input / textarea / select / button`. Do not set `font-size`, `font-family`, or `line-height` on service-specific elements — the cascade handles it. Use the utility classes for size variants:
+
+| Class | Size | Use for |
+|---|---|---|
+| *(default)* | `1rem / 1.5` | Body text, labels, buttons |
+| `.caption`, `.meta`, `.help-text` | `0.875rem / 1.4` | Secondary annotations, timestamps |
+
+### Form inputs
+
+Use the `input-field` class on `<input>` and `<textarea>` elements inside panels. It picks up the same border, padding, and `font: inherit` as all other inputs. Do not set `font-size: 14px` or any width/height directly on service inputs.
+
+### Colours
+
+Always use `--highlight-color` (green) for primary interactive elements and `--highlight-text-color` (white) for text on coloured backgrounds. Do not hard-code hex values for these colours.

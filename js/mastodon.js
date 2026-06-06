@@ -58,15 +58,15 @@ let accessToken = null;
                 statusActions: (item, _itemID, _itemUrl) => {
                     const { statusId, isReblogged, isFavourited, isBookmarked, inThread } = item.mastodon || {};
                     const threadsBtn = inThread
-                        ? `<button class="material-icons md-18 md-light" title="View thread" onclick="handleMastodonAction('${_heJs(statusId)}', 'thread')">dynamic_feed</button>`
+                        ? `<button class="clist-action-btn" title="View thread" onclick="handleMastodonAction('${_heJs(statusId)}', 'thread')"><span class="material-icons md-18 md-light">dynamic_feed</span></button>`
                         : '';
                     return `
-                        <button class="material-icons md-18 md-light" title="Reply" onclick="handleMastodonAction('${_heJs(statusId)}', 'reply', this.parentElement)">reply</button>
-                        <button class="material-icons md-18 md-light${isReblogged ? ' action-active' : ''}" title="Boost" onclick="handleMastodonAction('${_heJs(statusId)}', 'boost', this)">autorenew</button>
-                        <button class="material-icons md-18 md-light${isFavourited ? ' action-active' : ''}" title="Favourite" onclick="handleMastodonAction('${_heJs(statusId)}', 'favorite', this)">favorite</button>
-                        <button class="material-icons md-18 md-light${isBookmarked ? ' action-active' : ''}" title="Bookmark" onclick="handleMastodonAction('${_heJs(statusId)}', 'bookmark', this)">bookmarks</button>
+                        <button class="clist-action-btn" title="Reply" onclick="handleMastodonAction('${_heJs(statusId)}', 'reply', this.parentElement)"><span class="material-icons md-18 md-light">reply</span></button>
+                        <button class="clist-action-btn${isReblogged ? ' action-active' : ''}" title="Boost" onclick="handleMastodonAction('${_heJs(statusId)}', 'boost', this)"><span class="material-icons md-18 md-light">autorenew</span></button>
+                        <button class="clist-action-btn${isFavourited ? ' action-active' : ''}" title="Favourite" onclick="handleMastodonAction('${_heJs(statusId)}', 'favorite', this)"><span class="material-icons md-18 md-light">favorite</span></button>
+                        <button class="clist-action-btn${isBookmarked ? ' action-active' : ''}" title="Bookmark" onclick="handleMastodonAction('${_heJs(statusId)}', 'bookmark', this)"><span class="material-icons md-18 md-light">bookmarks</span></button>
                         ${threadsBtn}
-                        <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${_heJs(_itemUrl)}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+                        <button class="clist-action-btn" title="Open in browser" onclick="window.open('${_heJs(_itemUrl)}','_blank','width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>
                     `;
                 },
                 feedFunctions: {
@@ -94,6 +94,7 @@ let accessToken = null;
 (function () {
     window.CList.publishers = window.CList.publishers || {};
     window.CList.publishers['Mastodon'] = {
+        acceptedFormats: ['text'],
         publish: async (accountData, title, content, refs) => {
             const responseDiv = window.CList.ui.view.postResult;
             const cleanContent = removeHtml(content);
@@ -312,6 +313,7 @@ function renderMastodonNextPageButton(feedContainer, nextPageUrl, onLoadNext) {
         if (!btn) {
             btn = document.createElement('button');
             btn.id = 'nextPageButton';
+            btn.className = 'btn';
             btn.textContent = 'Load Next Page';
             feedContainer.appendChild(btn);
         }
@@ -602,14 +604,14 @@ async function normalizeMastodonPost(status, headerHtml = null) {
         translatedContent = status.content;
     }
 
-    const authorLink = `<a href="#" onclick="loadMastodonFeed('user',null,'@${_heJs(acct)}');return false;" title="View User Feed">${_he(display)}</a> (@${_he(acct)}) wrote:`;
-    const titleHtml  = headerHtml
-        ? `<div class="reblog-info">${headerHtml}</div>${authorLink}`
-        : authorLink;
-
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = translatedContent;
     const plainText = (tempDiv.textContent || tempDiv.innerText || '').replace(/\s+/g, ' ').trim();
+
+    const authorLink = `<a href="#" onclick="loadMastodonFeed('user',null,'@${_heJs(acct)}');return false;" title="View User Feed">${_he(display)}</a> (@${_he(acct)}) wrote: ${_he(plainText)}`;
+    const titleHtml  = headerHtml
+        ? `<div class="reblog-info">${headerHtml}</div>${authorLink}`
+        : authorLink;
 
     return {
         service:      'Mastodon',
@@ -617,9 +619,10 @@ async function normalizeMastodonPost(status, headerHtml = null) {
         titleHtml,
         title:        plainText.slice(0, 80),
         desc:         plainText,
+        noSummaryDesc: true,
         full_content: new SafeHtml(translatedContent),
-        feed:         display,
-        author:       null,
+        feed:         '@' + acct,
+        author:       display,
         author_id:    acct,
         date:         status.created_at,
         images:       getMastodonImageAttachments(status),

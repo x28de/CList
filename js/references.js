@@ -43,6 +43,19 @@ function getReferences() {
     return window.CList.state.references;
 }
 
+// Toggle the references panel — swaps write-pane-content for the refs list.
+window.playRefs = function() {
+    const panel = document.getElementById('clist-references-panel');
+    if (!panel) {
+        if (typeof showStatusMessage === 'function') showStatusMessage('No references yet.');
+        return;
+    }
+    const hidden  = window.getComputedStyle(panel).display === 'none';
+    const content = document.getElementById('write-pane-content');
+    panel.style.display = hidden ? 'block' : 'none';
+    if (content) content.style.display = hidden ? 'none' : '';
+};
+
 // Clear all references and hide the panel.
 function clearReferences() {
     window.CList.state.references = [];
@@ -76,4 +89,17 @@ function _renderReferencesPanel() {
             <a href="${ref.url}" target="_blank">${escapeHtml(ref.url)}</a></p>
         </div>`;
     }).join('');
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn';
+    saveBtn.textContent = 'Save as collection';
+    saveBtn.style.margin = '8px 4px 4px 10px';
+    saveBtn.addEventListener('click', () => {
+        if (typeof window.importCollectionFromChat === 'function') {
+            window.importCollectionFromChat([...refs], saveBtn);
+        } else {
+            showStatusMessage('Collection import not available.');
+        }
+    });
+    panel.appendChild(saveBtn);
 }

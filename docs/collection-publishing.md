@@ -35,16 +35,33 @@ Auth: kvstore JWT pattern (same as annotations, proxyp). SQLite backend.
 
 ## Step 2 — Publishing account types
 
-New account types registered in the schema system (`window.CList.schemas`). All use permission flag **`b`** (bin/publish) so they appear in the publishing account selector.
+Each publishing service has its own JS file, following the same pattern as social services
+(`wordpress.js`, `mastodon.js`). Each file registers a schema in `window.CList.schemas` and
+an adapter in `window.CList.binPublishers`.
 
-| Type | kvKey | Credential field | Notes |
-|---|---|---|---|
-| `JSONBin` | Label (e.g. "My JSONBin") | API key (`X-Master-Key`) | `https://api.jsonbin.io/v3/b` |
-| `Gist` | Label | GitHub personal access token | `https://api.github.com/gists` |
-| `0x0` | Label | — (anonymous) | `https://0x0.st` |
-| `CListBin` | Instance URL | Bearer token | Points to `pastebin.mooc.ca` or self-hosted |
+All use permission flag **`b`** (bin/publish) so they appear in the publishing account selector.
 
-Add `b` to the permissions flag table in `docs/accounts-structure.md`.
+| File | Type | kvKey | Credential | Notes |
+|---|---|---|---|---|
+| `js/jsonbin.js` | `JSONBin` | Label | API key (`X-Master-Key`) | `https://api.jsonbin.io/v3/b` |
+| `js/gist.js` | `Gist` | Label | GitHub personal access token | `https://api.github.com/gists` |
+| `js/0x0.js` | `0x0` | Label | — (anonymous) | `https://0x0.st` |
+| `js/clistbin.js` | `CListBin` | Instance URL | Bearer token | Points to `pastebin.mooc.ca` or self-hosted |
+
+### `window.CList.binPublishers` adapter interface
+
+```js
+window.CList.binPublishers['ServiceName'] = {
+    publish: async (content, mimeType, title, accountData) → { url, serviceId },
+    update:  async (serviceId, content, mimeType, accountData) → { url },
+    delete:  async (serviceId, accountData) → void,
+};
+```
+
+The **format** (JSON/OPML/HTML/RSS) and **content** are determined by the caller (collection editor,
+write-pane publish action, etc.). The adapter handles only the HTTP transport.
+
+`b` flag is documented in `docs/accounts-structure.md`.
 
 ---
 
@@ -65,20 +82,13 @@ The editor works on a mutable copy of `col.items` — original collection in kvs
 
 ---
 
-## Step 4 — Publisher adapters (`collectionpub.js`)
+## Step 4 — Publisher adapters (per-service files)
 
-One async function per service. Common signature:
+Each service file (`jsonbin.js`, `gist.js`, `0x0.js`, `clistbin.js`) registers its own adapter
+in `window.CList.binPublishers`. See Step 2 for the interface definition.
 
-```js
-async function publishTo{Service}(title, items, format, accountData) → url
-```
-
-| Function | Service | Method |
-|---|---|---|
-| `publishToJsonBin` | JSONBin.io | `POST https://api.jsonbin.io/v3/b` with `X-Master-Key` header |
-| `publishToGist` | GitHub Gist | `POST https://api.github.com/gists` with `Authorization: token` |
-| `publishTo0x0` | 0x0.st | `POST https://0x0.st` as multipart/form-data |
-| `publishToCListBin` | CListBin | `POST {instance}/` with `Authorization: Bearer` |
+The collection editor calls the adapter for whichever `b`-flagged account the user selects.
+The same adapters are available for any other "publish page" flow (write-pane export, etc.).
 
 ### Output formats
 
@@ -129,14 +139,18 @@ Flow:
 
 ---
 
-## Files to create / modify
+## Files created / modified
 
 | File | Change |
 |---|---|
-| `/srv/apps/pastebin/` | New app — Flask, SQLite, Docker |
-| `/srv/proxy/Caddyfile` | Add `pastebin.mooc.ca` route |
-| `js/collectionpub.js` | New — publisher adapters + format renderers |
+| `/srv/apps/pastebin/` | New app — Flask, SQLite, Docker ✓ |
+| `/srv/proxy/Caddyfile` | Add `pastebin.mooc.ca` route ✓ |
+| `js/jsonbin.js` | New — JSONBin schema + adapter ✓ |
+| `js/gist.js` | New — Gist schema + adapter ✓ |
+| `js/0x0.js` | New — 0x0.st schema + adapter ✓ |
+| `js/clistbin.js` | New — CListBin schema + adapter ✓ |
 | `js/collections.js` | Add Edit & Publish button, editor panel, import input, My Pages loader |
-| `index.html` | Add `collectionpub.js` script tag |
-| `docs/accounts-structure.md` | Add `b` flag, JSONBin/Gist/0x0/CListBin schema entries |
-| `CLAUDE.md` | Add pastebin.mooc.ca to services table |
+| `index.html` | Add bin publisher script tags ✓ |
+| `flasker.html` | Add 4 types to picker + script tags ✓ |
+| `docs/accounts-structure.md` | Add `b` flag, 4 schema rows ✓ |
+| `CLAUDE.md` | Add pastebin.mooc.ca to services table ✓ |

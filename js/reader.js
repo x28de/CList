@@ -222,12 +222,28 @@ function populateReadAccountList(accounts) {
     const accountList = document.getElementById('read-account-list');
     if (!accountList) return;
     accountList.innerHTML = '';
-    accountList.appendChild(makeAccountList(
+
+    const list = makeAccountList(
         'Select an account to read',
         accounts,
         v => v.permissions.includes('r') && v.type !== 'Annotate' && v.type !== 'Hypothesis',
         key => switchReaderAccount(key)
-    ));
+    );
+
+    const annotBtn = document.createElement('button');
+    annotBtn.className = 'account-button';
+    annotBtn.onclick = () => window.showAnnotations('all');
+    const annotIcon = document.createElement('span');
+    annotIcon.className = 'material-icons';
+    annotIcon.textContent = 'rate_review';
+    const annotLabel = document.createElement('span');
+    annotLabel.textContent = 'Annotations';
+    annotBtn.appendChild(annotIcon);
+    annotBtn.appendChild(annotLabel);
+    list.insertBefore(annotBtn, list.children[1]);
+
+    accountList.appendChild(list);
+
     // Kick off background RSS fetches so feeds are ready before the user clicks
     if (typeof rssBackgroundFetchAll === 'function') {
         rssBackgroundFetchAll(accounts);

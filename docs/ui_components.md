@@ -123,6 +123,60 @@ Buttons inside a command bar that hold a Material Icon use `.icon-btn`:
 
 ---
 
+## Buttons
+
+**Never create service-specific button styles.** All buttons use one of three global classes defined in `reader.css`.
+
+### Icon buttons — `.clist-action-btn`
+
+Transparent background, green icon, hover tint. Used in `.status-actions` and `.clist-actions` inside feed items.
+
+```html
+<button class="clist-action-btn" title="Descriptive label">
+    <span class="material-icons md-18 md-light">icon_name</span>
+</button>
+```
+
+- `title` is **required** on every icon button — it is the accessible label.
+- `action-active` goes on the **outer button** (not the span) for toggled state (liked, bookmarked, etc.).
+- Do not add `background`, `border`, `color`, or `padding` inline — the class handles it.
+
+### Text buttons — `.btn` / `.btn-small` / `.btn-secondary`
+
+| Class | Use |
+|---|---|
+| `btn` | Standard labelled action (panels, dialogs, command areas) |
+| `btn-small` | Compact labelled action (inside panels, pickers, inline controls) |
+| `btn-secondary` | Cancel or destructive-abort; combine with `btn` or `btn-small` |
+
+```html
+<button class="btn">Save</button>
+<button class="btn btn-secondary">Cancel</button>
+<button class="btn-small">Import from URL</button>
+<button class="btn-small btn-secondary">Discard</button>
+```
+
+Both `btn` and `btn-small` use `--highlight-color` background with `--highlight-text-color` (white) text. `btn-secondary` overrides to `#888` grey.
+
+---
+
+## Typography
+
+CList uses a system font stack set on `:root` in `interface.css`. All text elements inherit size and family through the cascade — do not override `font-family`, `font-size`, or `line-height` on service-specific elements.
+
+| Element / class | Size | Line height | Use |
+|---|---|---|---|
+| *(default body)* | `1rem` | `1.5` | All body text |
+| `small`, `.caption`, `.meta`, `.help-text` | `0.875rem` | `1.4` | Secondary text, timestamps, meta |
+| `h4` | `1.125rem` | `1.2` | Panel headings |
+| `h3` | `1.25rem` | `1.2` | Section headings |
+| `h2` | fluid `clamp(1.4rem…2rem)` | `1.2` | Major section headings |
+| `h1` | fluid `clamp(1.75rem…2.5rem)` | `1.2` | Page-level headings |
+
+`input`, `textarea`, `select`, and `button` all carry `font: inherit` — they match body text automatically. Do not set `font-size: 14px` or similar on any form element.
+
+---
+
 ## Pane status bars — `.pane-status` / `.pane-status-item`
 
 A thin bar below a command bar, used to show the current state (logged-in user, active editor, etc.). Both the left pane (`#current-status`) and right pane (`#right-status`) use this pattern.

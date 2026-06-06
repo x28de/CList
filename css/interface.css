@@ -5,15 +5,108 @@
   }
 
   :root {
-    --highlight-color: #4CAF50; /* Define the default highlight color */
+    --highlight-color: #4CAF50;      /* Green accent used for interactive elements */
+    --btn-fg: #ffffff;                /* Text colour on .btn / highlight-colour backgrounds */
+    --pad-v: 0.25rem;                 /* Standard vertical padding (buttons, list rows) */
+    --pad-h: 0.5rem;                  /* Standard horizontal padding (buttons, list rows) */
+
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      Helvetica,
+      Arial,
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Segoe UI Symbol",
+      sans-serif;
+    font-size: 100%;
+    line-height: 1.5;
   }
 
+  /* ── Typography ─────────────────────────────────────────────────────────── */
+
+  body { font-size: 1rem; line-height: 1.5; }
+
+  p, li, label, input, textarea, select, button {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  small, .caption, .meta, .help-text {
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  h1, h2, h3, h4 {
+    font-weight: 650;
+    line-height: 1.2;
+    margin-block: 1.5em 0.5em;
+  }
+  h1 { font-size: clamp(1.75rem, 2vw + 1rem, 2.5rem); }
+  h2 { font-size: clamp(1.4rem, 1.2vw + 1rem, 2rem); }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.125rem; }
+
+  .prose, .dialog-body, .article { max-width: 65ch; }
+
+  input, textarea, select, button { font: inherit; }
+
+  /* ── Buttons ────────────────────────────────────────────────────────────── */
+
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  /* .btn — labelled action button: green background, white text, opt-in */
+  .btn {
+    display: inline-block;
+    background-color: var(--highlight-color);
+    color: var(--btn-fg);
+    padding: var(--pad-v) var(--pad-h);
+    border-radius: 4px;
+    margin: 4px 3px 4px 0;
+  }
+  .btn:hover    { filter: brightness(0.85); }
+  .btn:disabled { opacity: 0.6; cursor: default; }
+
+  /* .btn-small — compact variant for pickers, dialogs, inline rows */
+  .btn-small { padding: 3px 8px; font-size: 0.82rem; margin: 0; }
+
+  /* .btn-secondary — grey override; combine with .btn or .btn-small */
+  .btn-secondary       { background: #888; }
+  .btn-secondary:hover { background: #666; }
+
+  /* ── Form fields ────────────────────────────────────────────────────────── */
+
+  select,
+  input[type="text"],
+  input[type="password"],
+  input[type="url"],
+  input[type="email"],
+  input[type="number"],
+  input[type="search"],
+  textarea,
+  .input-field {
+    width: 100%;
+    padding: 2px;
+    margin: 0 0 8px 0;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
 
   /* General Body and HTML */
   body, html {
     height: 100%;
-    font-family: Arial, sans-serif;
-    font-size:14pt;
     margin: 0;
     overflow: hidden;
     display: flex;
@@ -121,7 +214,7 @@
         display: flex;
         flex-direction: column;
         flex: 1;
-        background-color: #e5e5e5;
+        background-color: #f5f5f5;
     }
 
     #write-pane-content {
@@ -137,16 +230,22 @@
 
     }
 
+    #write-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 3px 10px 0;
+    }
+
     #write-title {
+      flex: 1;
       border: 1px solid #ccc;
       background-color: #ffffff;
-      padding: 10px;
-      margin-top: 3px;
-      margin-left: 10px;
-      margin-right: 10px;
-      height: 41px;
+      padding: 4px 8px;
+      height: 31px;
       min-height: 25px;
       border-radius: 5px;
+      overflow: hidden;
     }
 
     #write-title:empty::before {
@@ -154,6 +253,21 @@
       color: #aaa;
       pointer-events: none;
     }
+
+    #write-format {
+      font-size: 0.8rem;
+      padding: 2px 4px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #ffffff;
+      font-family: inherit;
+      height: 31px;
+      flex-shrink: 0;
+      width: auto;
+      margin: 0;
+    }
+
+    #write-format:focus { outline: none; border-color: var(--highlight-color); }
 
     #write-column {
       width: 100%;
@@ -166,8 +280,7 @@
         width: 100%;
         height: 500px;
         padding: 10px;
-        font-size: 16px;
-        font-family: Arial, sans-serif;
+        font-size: 1rem;
         color: #333;
         background-color: #f9f9f9;
         border: 1px solid #ccc;
@@ -198,7 +311,7 @@
     }
 
     #write-load-close-button {
-      font-size: 14px;
+      font-size: 0.875rem;
       margin: 0;
       padding: 4;
       cursor: pointer;
@@ -235,15 +348,12 @@
     }
 
     .allReferences {
-      position: relative;
       width: 100%;
-      height: 400px; /* Adjust to control the height */
-      max-height:100%;
+      flex: 1;
+      min-height: 0;
       background-color: #ffffff;
-      overflow-y: auto; /* Allow scrolling if content exceeds the height */
-      z-index: 100; /* Ensure it appears above other content */
-      display: none; /* Initially hidden */
-
+      overflow-y: auto;
+      display: none;
     }
 
 
@@ -256,10 +366,6 @@
 
   /* Triangle snap buttons in the command bars — desktop only */
   .pane-snap-btn {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
     line-height: 1;
     vertical-align: middle;
     opacity: 0.4;
@@ -267,7 +373,7 @@
   }
   .pane-snap-btn:hover { opacity: 1; }
   .pane-snap-btn .material-icons {
-    font-size: 28px;
+    font-size: 1.625rem;
     vertical-align: middle;
     color: #555;
   }
@@ -281,13 +387,14 @@
 
   .command {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    min-height: 41px;
+    height: 41px;
     box-sizing: border-box;
     padding: 4px 10px;
     background: #ddd;
     border-bottom: 1px solid #ccc;
+    overflow: hidden;
   }
 
   .command .command-left-buttons {
@@ -305,26 +412,20 @@
   }
 
   .icon-btn {
-    background: none;
-    border: none;
     padding: 0 4px;
-    cursor: pointer;
     line-height: 1;
     vertical-align: middle;
   }
   .icon-btn .material-icons {
-    font-size: 26px;
+    font-size: 1.625rem;
     vertical-align: middle;
     color: var(--highlight-color);
   }
   .icon-btn:hover .material-icons { filter: brightness(0.85); }
 
   .command .left-close-button {
-    margin-left: auto;            /* Push the close button to the far right */
-    background: none;             /* Optional: Style for the close button */
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
+    margin-left: auto;
+    font-size: 1.125rem;
   }
 
   #command-main {
@@ -360,7 +461,7 @@
     padding: 10px;
     display: flex;
     align-items: center;
-    font-size: 13px;
+    font-size: 0.8125rem;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -372,7 +473,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: #555;
     overflow: hidden;
     white-space: nowrap;
@@ -386,7 +487,7 @@
   }
 
   #selectedAccount .material-icons {
-    font-size: 16px;
+    font-size: 1rem;
     color: #888;
     flex-shrink: 0;
   }
@@ -413,14 +514,6 @@
       max-height: 26px; /* Prevent the logo from being too large */
       margin-left:0;
       margin-right:10px;
-  }
-  
-  button {
-    padding: 0px;
-    padding-left: 10px;
-    padding-right: 10px;
-    font-size: 1rem;
-    cursor: pointer;
   }
   
 
@@ -532,6 +625,11 @@
     scrollbar-color: #888 #f1f1f1;
   }
 
+  #left-interface,
+  #left-interface > div {
+    height: 100%;
+  }
+
   #left-content {
     direction: rtl; /* Move scrollbar to the left side */
   }
@@ -592,7 +690,7 @@
       width: 60%;  /* Set a specific width, like 80%, or you can use a fixed width */
       padding: 10px;  /* Add some padding for better appearance */
       margin: 0 auto;  /* Center the buttons */
-      font-size: 14px;  /* Adjust font size for readability */
+      font-size: 0.875rem;  /* Adjust font size for readability */
       box-sizing: border-box;  /* Ensure padding is included in the button width */
       background: #ddd;
       color: #444;
@@ -621,7 +719,7 @@
     padding: 9px 10px;
     border: none;
     border-bottom: 1px solid #ddd;
-    font-size: 14px;
+    font-size: 0.875rem;
     outline: none;
     background: #fafafa;
   }
@@ -633,7 +731,7 @@
   /* Account list tip + buttons */
   .list-tip {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: #666;
     border-bottom: 1px solid #ddd;
     margin-bottom: 4px;
@@ -644,18 +742,18 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 9px 10px;
+    padding: var(--pad-v) var(--pad-h);
     background: none;
     border: none;
     border-bottom: 1px solid #eee;
     text-align: left;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: #333;
     cursor: pointer;
   }
 
   .account-button .material-icons {
-    font-size: 18px;
+    font-size: 1.125rem;
     color: #888;
     flex-shrink: 0;
   }
@@ -723,7 +821,7 @@
     width: 80%;  /* Set a specific width, like 80%, or you can use a fixed width */
     padding: 10px;  /* Add some padding for better appearance */
     margin: 0 auto;  /* Center the buttons */
-    font-size: 12px;  /* Adjust font size for readability */
+    font-size: 0.75rem;  /* Adjust font size for readability */
     box-sizing: border-box;  /* Ensure padding is included in the button width */
   }
 
@@ -759,8 +857,7 @@
   color: var(--highlight-color); /*Green text */
   padding: 10px; /* Padding for content */
   border-radius: 5px; /* Rounded corners */
-  font-family: Arial, sans-serif;
-  font-size: 14px;
+  font-size: 0.875rem;
   display: none; /* Hidden by default */
   z-index: 1000; /* Ensure it’s above other elements */
 }
@@ -833,7 +930,7 @@
 @media (max-width: 768px) {
 
   body {
-    font-size: clamp(16px, 2.5vw, 20px); /* Adapts font size based on screen width */
+    font-size: clamp(1rem, 2.5vw, 1.25rem); /* Adapts font size based on screen width */
   }
   
   html {
@@ -911,11 +1008,8 @@ body:not(.user-registered) .clist-action-btn { display: none; }
 /* Standard pattern: <button class="clist-action-btn"><span class="material-icons md-18 md-light">icon_name</span></button> */
 /* title="…" is required on every icon button */
 .clist-action-btn {
-    background: none;
-    border: none;
-    padding: 4px 6px;
-    border-radius: 3px;
-    cursor: pointer;
+    padding: var(--pad-v) var(--pad-h);
+    border-radius: 4px;
     line-height: 1;
 }
 .clist-action-btn:hover { background-color: #efede9; }
@@ -932,7 +1026,7 @@ html.dark-mode #main-window {
     color: #e0e0e0;
 }
 html.dark-mode #read-pane  { background-color: #1e1e1e; }
-html.dark-mode #write-pane { background-color: #252525; }
+html.dark-mode #write-pane { background-color: #1e1e1e; }
 html.dark-mode #left-pane,
 html.dark-mode #right-pane { background: #252525; border-color: #3a3a3a; }
 html.dark-mode #audio-section,
@@ -955,20 +1049,68 @@ body.chat-active .chat-only-btn { display: inline-flex; }
     margin: 4px 0;
     background: #f9f9f9;
     max-width: 320px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     text-align: left;
 }
 .chat-share-card .chat-share-header { color: #555; margin-bottom: 4px; }
 .chat-share-card .chat-share-title  { font-weight: 500; margin-bottom: 4px; }
 .chat-share-card .chat-share-title a { color: #222; }
-.chat-share-card .chat-share-excerpt { color: #666; font-size: 12px; margin-bottom: 6px; word-break: break-word; }
+.chat-share-card .chat-share-excerpt { color: #666; font-size: 0.75rem; margin-bottom: 6px; word-break: break-word; }
 .chat-share-card .chat-share-items  { list-style: none; padding: 0; margin: 4px 0; }
-.chat-share-card .chat-share-items li { display: flex; align-items: center; gap: 4px; margin: 2px 0; font-size: 12px; min-width: 0; }
+.chat-share-card .chat-share-items li { display: flex; align-items: center; gap: 4px; margin: 2px 0; font-size: 0.75rem; min-width: 0; }
 .chat-share-card .chat-share-items li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-share-card .chat-share-items a { color: #444; font-size: 12px; }
+.chat-share-card .chat-share-items a { color: #444; font-size: 0.75rem; }
 .chat-share-card details summary { cursor: pointer; }
 .chat-share-card .chat-share-actions { margin-top: 6px; }
-.chat-share-card .chat-share-actions button { padding: 3px 10px; cursor: pointer; font-size: 12px; }
+.chat-share-card .chat-share-actions button { padding: 3px 10px; cursor: pointer; font-size: 0.75rem; }
+
+/* ── Collection publish editor ───────────────────────────────────────────── */
+.collection-publish-editor { padding: 0 8px 16px; }
+.collection-publish-editor h4 { margin: 12px 0 6px; font-size: 0.85rem; color: #555; font-variant: small-caps; }
+
+.collection-publish-items { list-style: none; padding: 0; margin: 0 0 12px; }
+.collection-publish-item  { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid #eee; }
+.collection-publish-item input[type="text"] {
+    flex: 1; border: none; border-bottom: 1px solid transparent; background: transparent;
+    font-size: 0.85rem; padding: 2px 4px; min-width: 0;
+}
+.collection-publish-item input[type="text"]:focus { outline: none; border-bottom-color: rgb(81,177,88); }
+
+.collection-publish-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.collection-publish-controls select { font-size: 0.85rem; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; background: #fff; }
+.collection-publish-controls select:focus { outline: none; border-color: rgb(81,177,88); }
+.collection-publish-no-accounts { font-size: 0.85rem; color: #888; margin-bottom: 10px; }
+
+.collection-publish-result { margin-top: 12px; padding: 10px; background: #f6fff6; border: 1px solid #b2e0b2; border-radius: 4px; }
+.collection-publish-result p { margin: 0 0 6px; font-size: 0.82rem; color: #555; }
+.collection-publish-result-url { display: flex; gap: 6px; align-items: center; }
+.collection-publish-result-url input[type="text"] { flex: 1; font-size: 0.82rem; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; min-width: 0; }
+.collection-publish-result-actions { margin-top: 8px; display: flex; gap: 6px; }
+
+html.dark-mode .collection-publish-item  { border-bottom-color: #333; }
+html.dark-mode .collection-publish-item input[type="text"] { color: #ddd; }
+html.dark-mode .collection-publish-controls select { background: #2d2d2d; border-color: #555; color: #ccc; }
+html.dark-mode .collection-publish-result { background: #1a2a1a; border-color: #3a5a3a; }
+html.dark-mode .collection-publish-result p { color: #aaa; }
+html.dark-mode .collection-publish-result-url input[type="text"] { background: #2d2d2d; border-color: #555; color: #ccc; }
+
+/* ── My Pages (published pages registry) ─────────────────────────────────── */
+.published-page-row { display: flex; align-items: center; gap: 6px; padding: 6px 4px; border-bottom: 1px solid #eee; flex-wrap: wrap; }
+.published-page-title { flex: 1; min-width: 0; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.published-page-title a { color: #222; text-decoration: none; }
+.published-page-title a:hover { text-decoration: underline; }
+.published-page-badge { font-size: 0.7rem; padding: 1px 5px; border-radius: 10px; white-space: nowrap;
+    background: #e8f5e9; color: #2a7a2a; border: 1px solid #b2e0b2; }
+.published-page-badge.badge-service { background: #e3f0ff; color: #1a5a9a; border-color: #a0c0e8; }
+.published-page-date { font-size: 0.75rem; color: #999; white-space: nowrap; }
+.published-page-actions { display: flex; gap: 2px; }
+.published-page-confirm { font-size: 0.8rem; color: #c00; display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; }
+
+html.dark-mode .published-page-row  { border-bottom-color: #333; }
+html.dark-mode .published-page-title a { color: #ddd; }
+html.dark-mode .published-page-badge { background: #1a2e1a; color: #7acc7a; border-color: #3a5a3a; }
+html.dark-mode .published-page-badge.badge-service { background: #1a2040; color: #7aaae8; border-color: #3a5a8a; }
+html.dark-mode .published-page-date { color: #666; }
 html.dark-mode #left-content,
 html.dark-mode #right-content { scrollbar-color: #555 #2a2a2a; }
 html.dark-mode #left-content::-webkit-scrollbar,
@@ -989,6 +1131,7 @@ html.dark-mode #write-title {
     background-color: #2d2d2d; border-color: #3a3a3a; color: #e0e0e0;
 }
 html.dark-mode #write-title:empty::before { color: #666; }
+html.dark-mode #write-format { background-color: #2d2d2d; border-color: #3a3a3a; color: #e0e0e0; }
 html.dark-mode #text-column {
     background-color: #2d2d2d; color: #e0e0e0; border-color: #3a3a3a;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
@@ -1047,11 +1190,9 @@ html.dark-mode #tiptap-editor .ProseMirror blockquote { border-left-color: #555;
 html.dark-mode #collab-toolbar { border-bottom-color: #3a3a3a; }
 html.dark-mode #collab-doc-id { background: #2d2d2d; border-color: #3a3a3a; color: #e0e0e0; }
 html.dark-mode #collab-doc-picker button,
-html.dark-mode #collab-format-toolbar button,
-html.dark-mode .collab-share-btn { background: #2d2d2d; border-color: #555; color: #ccc; }
+html.dark-mode #collab-format-toolbar button { background: #2d2d2d; border-color: #555; color: #ccc; }
 html.dark-mode #collab-doc-picker button:hover,
-html.dark-mode #collab-format-toolbar button:hover,
-html.dark-mode .collab-share-btn:hover { background: #3a3a3a; }
+html.dark-mode #collab-format-toolbar button:hover { background: #3a3a3a; }
 html.dark-mode #collab-format-toolbar button.is-active { background: #2a3a5a; color: #ccc; }
 html.dark-mode #collab-doc-warning button { background: #3d1515; border-color: #7a3030; color: #ff8080; }
 html.dark-mode #collab-doc-warning button:hover { background: #4a1a1a; }

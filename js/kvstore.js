@@ -189,7 +189,7 @@ function playAccounts() {
 function kvstoreAccountsPanel() {
     const div = document.createElement('div');
     div.innerHTML = `
-        <iframe src="flasker.html" style="width:100%; height:600px; border:none;"></iframe>
+        <iframe src="flasker.html" style="width:100%; height:100%; border:none;"></iframe>
     `;
     return div;
 }
@@ -202,7 +202,7 @@ function playMe() {
 function kvstoreMePanel() {
     const div = document.createElement('div');
     div.innerHTML = `
-        <iframe src="me.html" style="width:100%; height:600px; border:none;"></iframe>
+        <iframe src="me.html" style="width:100%; height:100%; border:none;"></iframe>
     `;
     return div;
 }
@@ -216,7 +216,7 @@ function playFollowing() {
 function kvstoreFollowingPanel() {
     const div = document.createElement('div');
     div.innerHTML = `
-        <iframe src="following.html" style="width:100%; height:600px; border:none;"></iframe>
+        <iframe src="following.html" style="width:100%; height:100%; border:none;"></iframe>
     `;
     return div;
 }
@@ -230,7 +230,7 @@ function playDid() {
 function kvstoreDidPanel() {
     const div = document.createElement('div');
     div.innerHTML = `
-        <iframe src="did.html" style="width:100%; height:600px; border:none;"></iframe>
+        <iframe src="did.html" style="width:100%; height:100%; border:none;"></iframe>
     `;
     return div;
 }
@@ -244,7 +244,7 @@ function playOptions() {
 function kvstoreOptionsPanel() {
     const div = document.createElement('div');
     div.innerHTML = `
-        <iframe src="options.html" style="width:100%; height:600px; border:none;"></iframe>
+        <iframe src="options.html" style="width:100%; height:100%; border:none;"></iframe>
     `;
     return div;
 }
@@ -402,6 +402,7 @@ window.addEventListener('popstate', (e) => {
                 if (mode === 'register') autoRegisterCollab().catch(e => console.warn('Collab auto-registration failed:', e));
                 if (mode === 'register') autoRegisterAnnotations().catch(e => console.warn('Annotations auto-registration failed:', e));
                 autoSeedRSSRelay().catch(e => console.warn('RSS Relay account seed failed:', e));
+                autoSeedCListBin().catch(e => console.warn('CListBin account seed failed:', e));
                 if (window.CList.accounts) {
                     updateUIVisibility();
                     await playRead();
@@ -757,6 +758,30 @@ window.addEventListener('popstate', (e) => {
                 body: JSON.stringify({ key: OPML2JSON_DEFAULT, value: encryptedValue })
             });
             if (!saveResp.ok) throw new Error('RSS Relay account save failed: ' + saveResp.status);
+        }
+
+        async function autoSeedCListBin() {
+            const CLISTBIN_DEFAULT = 'https://pastebin.mooc.ca';
+            const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
+            if (!token) return;
+
+            const existing = (window.CList.accounts || []).find(a => {
+                const v = parseAccountValue(a);
+                return v && v.type === 'CListBin' && v.instance === CLISTBIN_DEFAULT;
+            });
+            if (existing) return;
+
+            const encKey = await getEncKey(window.CList.config.flaskSiteUrl);
+            if (!encKey) throw new Error('Encryption key not available');
+            const instanceData = { type: 'CListBin', instance: CLISTBIN_DEFAULT, title: 'pastebin.mooc.ca', permissions: 'b' };
+            const encryptedValue = await encryptWithKey(encKey, JSON.stringify(instanceData));
+
+            const saveResp = await fetch(`${window.CList.config.flaskSiteUrl}/add_kv/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ key: CLISTBIN_DEFAULT, value: encryptedValue })
+            });
+            if (!saveResp.ok) throw new Error('CListBin account save failed: ' + saveResp.status);
         }
 
         // Re-register on all saved Collab servers to push an updated DID.

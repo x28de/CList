@@ -51,11 +51,11 @@ let _bskyPds   = null;
                     parentUri, parentCid, rootUri, rootCid,
                     uri: postUri, cid: postCid, postId, postUrl } = item.bluesky || {};
             return `
-                <button class="material-icons md-18 md-light" title="Reply" onclick="openLeftInterface(blueskyReplyForm('${_heJs(parentUri)}','${_heJs(parentCid)}','${_heJs(rootUri)}','${_heJs(rootCid)}'))">reply</button>
-                <button class="material-icons md-18 md-light${isLiked ? ' action-active' : ''}" title="Like" data-record-uri="${_he(likeUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','favorite',this)">favorite</button>
-                <button class="material-icons md-18 md-light${isReposted ? ' action-active' : ''}" title="Repost" data-record-uri="${_he(repostUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','repost',this)">autorenew</button>
-                ${inThread ? `<button class="material-icons md-18 md-light" title="View thread" onclick="displayThread('${_heJs(threadUri)}')">dynamic_feed</button>` : ''}
-                <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${_heJs(postUrl)}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+                <button class="clist-action-btn" title="Reply" onclick="openLeftInterface(blueskyReplyForm('${_heJs(parentUri)}','${_heJs(parentCid)}','${_heJs(rootUri)}','${_heJs(rootCid)}'))"><span class="material-icons md-18 md-light">reply</span></button>
+                <button class="clist-action-btn${isLiked ? ' action-active' : ''}" title="Like" data-record-uri="${_he(likeUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','favorite',this)"><span class="material-icons md-18 md-light">favorite</span></button>
+                <button class="clist-action-btn${isReposted ? ' action-active' : ''}" title="Repost" data-record-uri="${_he(repostUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','repost',this)"><span class="material-icons md-18 md-light">autorenew</span></button>
+                ${inThread ? `<button class="clist-action-btn" title="View thread" onclick="displayThread('${_heJs(threadUri)}')"><span class="material-icons md-18 md-light">dynamic_feed</span></button>` : ''}
+                <button class="clist-action-btn" title="Open in browser" onclick="window.open('${_heJs(postUrl)}','_blank','width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>
             `;
         },
     };
@@ -68,6 +68,7 @@ let _bskyPds   = null;
 (function () {
     window.CList.publishers = window.CList.publishers || {};
     window.CList.publishers['Bluesky'] = {
+        acceptedFormats: ['text'],
         publish: async (_accountData, _title, content, refs) => {
             const blueskyRefs = (refs || []).filter(r => r.replyToken?.type === 'Bluesky');
             const replyToken = blueskyRefs[0]?.replyToken || null;
@@ -476,11 +477,12 @@ async function normalizeBlueskyPost(post) {
     return {
         service:    'Bluesky',
         url:        postUrl,
-        titleHtml:  `<a href="#" onclick="fetchBlueskyUserFeed('${_heJs(handle)}'); return false;" title="View User Feed">${_he(authorName)}</a> (@${_he(handle)}) wrote:`,
+        titleHtml:  `<a href="#" onclick="fetchBlueskyUserFeed('${_heJs(handle)}'); return false;" title="View User Feed">${_he(authorName)}</a> (@${_he(handle)}) wrote: ${_he(desc)}`,
         title:      postContent.slice(0, 80),
         desc,
-        feed:       authorName,
-        author:     null,
+        noSummaryDesc: true,
+        feed:       '@' + handle,
+        author:     authorName,
         date:       post.record.createdAt || new Date().toISOString(),
         images:     (post.embed?.images || []).map(img => ({
                         preview_url: img.thumb,
@@ -772,7 +774,7 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
             const actionButtons = document.createElement('div');
             actionButtons.classList.add('status-actions');
             actionButtons.innerHTML = `
-                <button class="material-icons md-18 md-light" title="Open in browser" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')">launch</button>
+                <button class="clist-action-btn" title="Open in browser" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>
                 <button class="clist-action-btn" id="collect-btn-${postId}" onclick="collectItem('${postId}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
                 <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
             `;
@@ -781,7 +783,7 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
             const clistButtons = document.createElement('div');
             clistButtons.classList.add('clist-actions');
             clistButtons.innerHTML = `
-                <button class="material-icons md-18 md-light" onclick="loadContentToEditor('${postId}');" title="Load in editor">arrow_right</button>
+                <button class="clist-action-btn" onclick="loadContentToEditor('${postId}');" title="Load in editor"><span class="material-icons md-18 md-light">arrow_right</span></button>
                 <button class="clist-action-btn" id="anno-btn-${postId}" onclick="openAnnotationEditor('${postId}');" title="Write about this"><span class="material-icons md-18 md-light">arrow_forward</span></button>
             `;
 
@@ -796,6 +798,7 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
     if (cursor) {
         const loadMoreButton = document.createElement('button');
         loadMoreButton.id = 'loadMoreButton';
+        loadMoreButton.className = 'btn';
         loadMoreButton.innerText = 'Load More';
         loadMoreButton.onclick = () => fetchBlueskyNotifications(cursor);
         feedContainer.appendChild(loadMoreButton);

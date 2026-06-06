@@ -170,8 +170,7 @@ function playChat() {
             if (didUsername !== data.username)
               console.warn(`Peer identity mismatch: claimed "${data.username}" but DID says "${didUsername}"`);
           }
-          const joinLabel = data.did ? `${data.username} (DID)` : data.username;
-          appendMessage(`${joinLabel} has joined the discussion`, false, true);
+          _appendJoinCard(data);
         } else if (data.type === 'request-username') {
             conn.send({ type: 'username-update', username: myUsername, did: myDidKey, didWeb: myDid, publicKeyJwk: myPublicKeyJwk });
         } else if (data.type === 'collab-invite') {
@@ -315,6 +314,39 @@ function appendMessage(message, isOwn = false, isEvent = false) {
   }
   document.getElementById('chat-messages').appendChild(div);
   if (chatBc) chatBc.postMessage({ type: 'chat-msg', html: div.innerHTML, isOwn, isEvent });
+}
+
+// Render a join event with an optional Follow button for peers who have a DID.
+function _appendJoinCard(data) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'chat-event';
+
+  const text = document.createElement('span');
+  text.textContent = `${data.did ? `${data.username} (DID)` : data.username} has joined the discussion`;
+  wrapper.appendChild(text);
+
+  const token = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN);
+  if (data.didWeb && token && data.didWeb !== myDid) {
+    const followBtn = document.createElement('button');
+    followBtn.className = 'clist-action-btn';
+    followBtn.title     = 'Follow this person';
+    followBtn.style.marginLeft = '6px';
+    followBtn.innerHTML = '<span class="material-icons md-18 md-light">person_add</span>';
+    followBtn.addEventListener('click', () => {
+      if (typeof window._followUser === 'function') {
+        window._followUser(data.didWeb, token, followBtn).catch(e => {
+          showStatusMessage('Follow error: ' + e.message);
+          console.error('Follow error', e);
+        });
+      } else {
+        showStatusMessage('Follow not available.');
+      }
+    });
+    wrapper.appendChild(followBtn);
+  }
+
+  document.getElementById('chat-messages').appendChild(wrapper);
+  if (chatBc) chatBc.postMessage({ type: 'chat-msg', html: text.textContent, isOwn: false, isEvent: true });
 }
 
 // Returns this user's annotation store URL from their configured Annotate account, or null.
@@ -503,8 +535,7 @@ function connectToPeer(peerId, discussionName) {
         if (didUsername !== data.username)
           console.warn(`Peer identity mismatch: claimed "${data.username}" but DID says "${didUsername}"`);
       }
-      const joinLabel = data.did ? `${data.username} (DID)` : data.username;
-      appendMessage(`${joinLabel} has joined the discussion`, false, true);
+      _appendJoinCard(data);
     } else if (data.type === 'request-username') {
         conn.send({ type: 'username-update', username: myUsername, did: myDidKey, didWeb: myDid, publicKeyJwk: myPublicKeyJwk });
     } else if (data.type === 'collab-invite') {
@@ -635,8 +666,8 @@ function appendCollabInviteCard(invite, sender) {
   card.appendChild(document.createTextNode(` invites you to ${modeLabel} `));
   card.appendChild(em);
   const btn = document.createElement('button');
+  btn.className = 'btn';
   btn.textContent = 'Open in Collab';
-  btn.style.cssText = 'display:block;margin-top:6px;padding:3px 10px;cursor:pointer';
   btn.addEventListener('click', () => {
     if (typeof window.openCollabInvite === 'function') window.openCollabInvite(invite);
     else showStatusMessage('Collab editor not available.');
@@ -722,6 +753,21 @@ function appendShareCard(data, sender) {
     });
     details.appendChild(ul);
     card.appendChild(details);
+
+    const actionsEl = document.createElement('div');
+    actionsEl.className = 'chat-share-actions';
+    const importBtn = document.createElement('button');
+    importBtn.className = 'btn';
+    importBtn.textContent = '↓ Add to my collection';
+    importBtn.addEventListener('click', () => {
+      if (typeof window.importCollectionFromChat === 'function') {
+        window.importCollectionFromChat(data.items, importBtn);
+      } else {
+        showStatusMessage('Collection import not available.');
+      }
+    });
+    actionsEl.appendChild(importBtn);
+    card.appendChild(actionsEl);
   }
 
   if (data.excerpt && data.kind !== 'collection') {
@@ -735,6 +781,7 @@ function appendShareCard(data, sender) {
     const actionsEl = document.createElement('div');
     actionsEl.className = 'chat-share-actions';
     const loadBtn = document.createElement('button');
+    loadBtn.className = 'btn';
     loadBtn.textContent = '→ Load to editor';
     loadBtn.addEventListener('click', () => {
       // Build a formatted HTML block: title as link + excerpt if present.
@@ -979,6 +1026,7 @@ function refreshDiscussions() {
         const li = document.createElement('li');
         li.style.listStyleType = 'none';
         const button = document.createElement('button');
+        button.className = 'btn';
         button.textContent = `Join ${discussion.name}`;
         button.onclick = () => connectToPeer(discussion.peerId, discussion.name);
         li.appendChild(button);

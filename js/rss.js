@@ -55,25 +55,25 @@ window.CList.schemas['RSS'] = {
         statusActions: (item, itemID) => {
             let a = '';
             if (item.full_content) {
-                a += `<button class="material-icons md-18 md-light" `
+                a += `<button class="clist-action-btn" title="Expand" `
                    + `onclick="toggleFormDisplay('${itemID}-content');`
-                   + `toggleFormDisplay('${itemID}-summary');">zoom_out_map</button>`;
+                   + `toggleFormDisplay('${itemID}-summary');"><span class="material-icons md-18 md-light">zoom_out_map</span></button>`;
             }
             if (item.audioIcon) { a += item.audioIcon; }
             if (item.link && /^https?:\/\//i.test(item.link)) {
                 const safeLink = item.link.replace(/'/g, '%27');
-                a += `<button class="material-icons md-18 md-light" `
+                a += `<button class="clist-action-btn" title="Open in browser" `
                    + `onclick="window.open('${safeLink}','_blank','width=800,height=600,scrollbars=yes')">`
-                   + `launch</button>`;
+                   + `<span class="material-icons md-18 md-light">launch</span></button>`;
             }
             const ri = item.readAt ? 'drafts' : 'mail';
             const rt = item.readAt ? 'Mark unread' : 'Mark read';
-            a += `<button class="material-icons md-18 md-light" `
-               + `onclick="rssToggleRead('${item.entryId}',this)" title="${rt}">${ri}</button>`;
+            a += `<button class="clist-action-btn" `
+               + `onclick="rssToggleRead('${item.entryId}',this)" title="${rt}"><span class="material-icons md-18 md-light">${ri}</span></button>`;
             const bi = item.bookmarked ? 'bookmark' : 'bookmark_border';
             const bt = item.bookmarked ? 'Remove bookmark' : 'Bookmark';
-            a += `<button class="material-icons md-18 md-light" `
-               + `onclick="rssToggleBookmark('${item.entryId}',this)" title="${bt}">${bi}</button>`;
+            a += `<button class="clist-action-btn" `
+               + `onclick="rssToggleBookmark('${item.entryId}',this)" title="${bt}"><span class="material-icons md-18 md-light">${bi}</span></button>`;
             return a;
         }
     };
@@ -524,7 +524,7 @@ function _rssAppendPage() {
             const audioUrls = Array.isArray(e.audio) ? e.audio : [e.audio];
             audioUrls.forEach(src => audioFiles.push({ src, title: e.title }));
             const idx = audioFiles.length - 1;
-            audioIcon = `<button class="material-icons md-18 md-light" onclick="playAudio(${idx});">play_arrow</button>`;
+            audioIcon = `<button class="clist-action-btn" title="Play audio" onclick="playAudio(${idx});"><span class="material-icons md-18 md-light">play_arrow</span></button>`;
         }
         fc.appendChild(makeListing({
             service:    'RSS',

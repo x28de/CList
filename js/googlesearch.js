@@ -7,7 +7,7 @@
         label: 'Google',
         logoSrc: 'assets/icons/google.svg',
         statusActions: (item,itemID,itemLink) => {
-            return  `<button class="material-icons md-18 md-light" onClick="window.open('${itemLink}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>`;;
+            return `<button class="clist-action-btn" title="Open in browser" onClick="window.open('${itemLink}', '_blank', 'width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>`;
         },
         feedFunctions: {
             'Web': function() { window.CList.readers['google'].search(); },
@@ -151,6 +151,7 @@ async function googleSearch(query,type,start) {
             if (!nextPageButton) {
                 nextPageButton = document.createElement('button');
                 nextPageButton.id = 'nextPageButton';
+                nextPageButton.className = 'btn';
                 nextPageButton.textContent = 'Load Next Page';
                 nextPageButton.onclick = () => googleSearch(query,type,start);
                 feedContainer.appendChild(nextPageButton);

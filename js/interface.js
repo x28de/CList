@@ -214,6 +214,7 @@ function snapPanes(direction) {
         // For each function, place a button
         for (const [feedType, feedAction] of Object.entries(feedFunctions)) {
             const button = document.createElement('button');
+            button.className = 'btn';
             button.textContent = feedType;
             button.onclick = feedAction;
             buttonsContainer.appendChild(button);
@@ -222,6 +223,7 @@ function snapPanes(direction) {
         // Translation toggle — persists across account switches
         const translateBtn = document.createElement('button');
         translateBtn.id = 'translation-toggle-btn';
+        translateBtn.className = 'btn btn-small';
         translateBtn.textContent = 'Translate: ' + (translationEnabled ? 'ON' : 'OFF');
         translateBtn.onclick = toggleTranslation;
         buttonsContainer.appendChild(translateBtn);

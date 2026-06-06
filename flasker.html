@@ -320,6 +320,10 @@
                 AI:        'psychology',
                 Proxyp:    'vpn_key',
                 Annotate:  'rate_review',
+                JSONBin:   'inventory_2',
+                Gist:      'code',
+                '0x0':     'upload',
+                CListBin:  'storage',
             };
             if (type === 'Mastodon') {
                 const span = document.createElement('span');
@@ -361,7 +365,7 @@
 
             const list = document.createElement('div');
             list.className = 'account-list';
-            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp', 'Annotate', 'Hypothesis'].forEach(type => {
+            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp', 'Annotate', 'Hypothesis', 'JSONBin', 'Gist', '0x0', 'CListBin'].forEach(type => {
                 const btn = document.createElement('button');
                 btn.className = 'account-button';
                 btn.onclick = () => selectAccountType(type);
@@ -1225,7 +1229,7 @@
                 tip.textContent = 'Select an account to manage';
                 accountList.appendChild(tip);
 
-                const kvItems = data.filter(k => !k.key.startsWith('_') && !k.key.startsWith('social:following:'));
+                const kvItems = data.filter(k => !k.key.startsWith('_') && !k.key.startsWith('social:following:') && !k.key.startsWith('collection:'));
                 let decryptFailCount = 0;
                 for (const kv of kvItems) {
                     let parsedValue = null;
@@ -1641,6 +1645,11 @@
     </div>
 
 <script src="js/crypto_utils.js"></script>
+<script>window.CList = window.CList || { schemas: {}, binPublishers: {}, config: {}, keys: {} };</script>
+<script src="js/jsonbin.js"></script>
+<script src="js/gist.js"></script>
+<script src="js/0x0.js"></script>
+<script src="js/clistbin.js"></script>
 </body>
 </html>
 

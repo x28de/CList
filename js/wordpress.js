@@ -24,6 +24,7 @@ window.CList.schemas['WordPress'] = {
 (function () {
     window.CList.publishers = window.CList.publishers || {};
     window.CList.publishers['WordPress'] = {
+        acceptedFormats: ['html', 'md', 'text'],
         publish: async (accountData, title, content) => {
             const plainTitle = removeHtml(title).trim()
                 || content.replace(/<[^>]+>/g, '').trim().substring(0, 70).replace(/\s\S*$/, '') + '…';

@@ -68,9 +68,10 @@ btn.className = 'btn';
 btn.textContent = 'Label';
 ```
 
-- `.btn` — styled in `reader.css`: `rgb(81,177,88)` background, white text, 6px/14px padding
-- `.btn.btn-secondary` — grey (`#888`) for cancel / destructive-abort actions
-- **Do not** invent new button styles. Use `.btn` for primary actions and `.btn.btn-secondary` for secondary.
+- `.btn` — standard labelled action; `--highlight-color` background, `--highlight-text-color` (white) text
+- `.btn-small` — compact variant for buttons inside panels, pickers, and inline controls; same colours, smaller padding and font
+- `.btn-secondary` — grey (`#888`) override; combine with `.btn` or `.btn-small` for cancel / destructive-abort actions
+- **Do not** invent new button styles. Do not add service-specific CSS classes or inline style attributes for buttons.
 
 ## Error Handling
 

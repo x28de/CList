@@ -67,6 +67,13 @@ window.CList.savers = window.CList.savers || [];
 
 async function playPost() {
 
+    if (typeof currentEditor !== 'undefined' && currentEditor === 'collection') {
+        if (typeof window.playCollectionPublish === 'function') {
+            await window.playCollectionPublish();
+            return;
+        }
+    }
+
     if (!Array.isArray(window.CList.accounts)) {
         throw new Error('Error: Accounts array not found; maybe you need to log in.');
     }
@@ -79,12 +86,18 @@ async function playPost() {
         }
     }
 
-    populatePostOptions(window.CList.accounts); // Populate UI with options to save
+    populatePostOptions(window.CList.accounts);
     openRightInterface('post-instructions');
 
 }
 
 async function playSave() {
+    if (typeof currentEditor !== 'undefined' && currentEditor === 'collection') {
+        if (typeof window.playCollectionSave === 'function') {
+            await window.playCollectionSave();
+            return;
+        }
+    }
     populateSaveOptions();
     openRightInterface('save-instructions');
 }
@@ -112,7 +125,7 @@ function populatePostOptions(accounts) {
     const finalPostOption = document.createElement('button');
     finalPostOption.textContent = 'Publish';
     finalPostOption.id = 'final-post-button';
-    finalPostOption.className = 'final-save-button';
+    finalPostOption.className = 'final-save-button btn';
     postOptionsDiv.appendChild(finalPostOption);
 
     finalPostOption.onclick = async function() {

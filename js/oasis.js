@@ -6,10 +6,10 @@
         label: 'OASIS OERs',
         icon: 'school',
         statusActions: (item,itemID,itemLink) => {
-            oasisStatusActions = `<button class="material-icons md-18 md-light" onClick="window.open('${itemLink}', '_blank', 'width=800,height=600,scrollbars=yes')">launch</button>`;
+            oasisStatusActions = `<button class="clist-action-btn" title="Open in browser" onClick="window.open('${itemLink}', '_blank', 'width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>`;
 
             // Enlarge Content
-            if (item.full_content) { oasisStatusActions += `<button class="material-icons md-18 md-light" onClick="toggleFormDisplay('${itemID}-content');toggleFormDisplay('${itemID}-summary');">zoom_out_map</button>`; }
+            if (item.full_content) { oasisStatusActions += `<button class="clist-action-btn" title="Expand" onClick="toggleFormDisplay('${itemID}-content');toggleFormDisplay('${itemID}-summary');"><span class="material-icons md-18 md-light">zoom_out_map</span></button>`; }
 
             return oasisStatusActions;
         },

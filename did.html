@@ -243,6 +243,24 @@
             });
         }
 
+        // Add pages catalog service entries if the user has published a catalog
+        const catalogKv = kvs.find(kv => kv.key === 'clist:pages-catalog');
+        if (catalogKv) {
+            try {
+                const meta = JSON.parse(await decryptWithKey(encKey, catalogKv.value));
+                if (meta.opmlUrl) services.push({
+                    id: `${existingProfile.id}#pages-opml`,
+                    type: 'CListPages',
+                    serviceEndpoint: meta.opmlUrl,
+                });
+                if (meta.apUrl) services.push({
+                    id: `${existingProfile.id}#pages-outbox`,
+                    type: 'OrderedCollection',
+                    serviceEndpoint: meta.apUrl,
+                });
+            } catch {}
+        }
+
         const publicKeyJwk = existingProfile.verificationMethod?.[0]?.publicKeyJwk;
         const didKey = existingProfile.alsoKnownAs?.find(a => a.startsWith('did:key:'));
         if (!publicKeyJwk || !didKey) {

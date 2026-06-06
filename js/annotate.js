@@ -113,7 +113,7 @@ function _appendAddForm(panel, itemID, url, writeAccts, token) {
 
     const toggle = document.createElement('button');
     toggle.textContent = '+ Add annotation';
-    toggle.style.cssText = 'background:none;border:none;color:#2068ba;font-size:0.8rem;cursor:pointer;padding:0;margin-bottom:4px;';
+    toggle.style.cssText = 'color:#2068ba;font-size:0.8rem;margin-bottom:4px;';
 
     const form = document.createElement('div');
     form.style.display = 'none';
@@ -168,11 +168,11 @@ function _appendAddForm(panel, itemID, url, writeAccts, token) {
 
     const submitBtn = document.createElement('button');
     submitBtn.textContent = 'Save';
-    submitBtn.style.cssText = 'font-size:0.8rem;padding:3px 10px;';
+    submitBtn.className = 'btn btn-small';
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.cssText = 'font-size:0.8rem;padding:3px 10px;background:#eee;color:#555;';
+    cancelBtn.className = 'btn btn-small btn-secondary';
 
     btnRow.appendChild(submitBtn);
     btnRow.appendChild(cancelBtn);
@@ -224,6 +224,12 @@ window.clistAnnotate = function(itemId) {
         showStatusMessage('No reference found for this item.');
         return;
     }
+    if (typeof currentEditor !== 'undefined' && currentEditor === 'collection') {
+        if (typeof window.addItemToCollectionEditor === 'function') {
+            window.addItemToCollectionEditor(el.reference);
+        }
+        return;
+    }
     pushReference({ ...el.reference });
 
     const selection = window.getSelection();
@@ -251,6 +257,12 @@ window.openAnnotationEditor = function(itemId) {
     const el = document.getElementById(itemId);
     if (!el || !el.reference) {
         showStatusMessage('No reference found for this item.');
+        return;
+    }
+    if (typeof currentEditor !== 'undefined' && currentEditor === 'collection') {
+        if (typeof window.addItemToCollectionEditor === 'function') {
+            window.addItemToCollectionEditor(el.reference);
+        }
         return;
     }
     pushReference({ ...el.reference });
@@ -892,6 +904,8 @@ async function _followUser(did, token, btn) {
     }
 }
 
+window._followUser = _followUser;
+
 // ── Unified annotation item builder ───────────────────────────────────────────
 
 const _ANNO_BODY_THRESHOLD = 400;
@@ -1353,7 +1367,7 @@ async function _fetchAnnotationFeedForAccount(acct, since) {
 }
 
 // Show a feed of recent annotations from self + all followed users.
-window.showAllAnnotations = async function() {
+window.showAnnotations = async function showAnnotations(filter) {
     const feedContainer = window.CList.ui.view.feedContainer;
     feedContainer.innerHTML = '<p class="feed-status-message">Loading annotations…</p>';
 
@@ -1372,23 +1386,28 @@ window.showAllAnnotations = async function() {
         return;
     }
 
+    const token      = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || '';
+    const myKvDomain = (window.CList.config.flaskSiteUrl || '').replace(/^https?:\/\//, '');
+    const myDid      = window.CList.state.username
+        ? `did:web:${myKvDomain}:users:${window.CList.state.username}` : '';
+
     const since   = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
     const results = await Promise.all(allAccounts.map(a => _fetchAnnotationFeedForAccount(a, since)));
 
-    const seen   = new Set();
-    const unique = results.flat()
+    const seen = new Set();
+    let unique = results.flat()
         .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
         .sort((a, b) => new Date(b.created) - new Date(a.created));
 
+    if (filter === 'my') unique = unique.filter(a => (a.creator?.id || a.creator) === myDid);
+
     feedContainer.innerHTML = '';
     if (!unique.length) {
-        feedContainer.innerHTML = '<p class="feed-status-message">No annotations in the last 14 days.</p>';
+        const msg = filter === 'my' ? 'No annotations by you in the last 14 days.' : 'No annotations in the last 14 days.';
+        feedContainer.innerHTML = `<p class="feed-status-message">${msg}</p>`;
         return;
     }
-    const token        = getSiteSpecificCookie(window.CList.config.flaskSiteUrl, window.CList.keys.ACCESS_TOKEN) || '';
-    const myKvDomain   = (window.CList.config.flaskSiteUrl || '').replace(/^https?:\/\//, '');
-    const myDid        = window.CList.state.username
-        ? `did:web:${myKvDomain}:users:${window.CList.state.username}` : '';
+
     const annotateAccts = (window.CList.accounts || [])
         .map(a => parseAccountValue(a))
         .filter(d => d && d.type === 'Annotate' && d.instance);
@@ -1399,11 +1418,7 @@ window.showAllAnnotations = async function() {
 
     for (const anno of unique) {
         feedContainer.appendChild(_buildAnnotationItem(anno, {
-            showUrl: true,
-            myDid,
-            token,
-            writeAccts,
-            followedDids,
+            showUrl: true, myDid, token, writeAccts, followedDids,
         }));
     }
     checkAnnotationsBatch();

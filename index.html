@@ -18,8 +18,6 @@
   <!-- Google Fonts for the entire page -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <script src="https://www.downes.ca/assets/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
   
@@ -68,13 +66,11 @@
 
             <div id="read-pane">
                 <div id="left-main-command" class="command">
-                    <div>
-                    <button class="left icon-btn" onclick="playRead(); playAccounts();" title="Accounts"><span class="material-icons">person</span></button>
-                    <button id="openLeftButton" class="left" onclick="playRead();" style="display:none">Read</button>
-                    <button id="openFindButton" class="left" onclick="playFind();">Find</button>
-                    <button id="openAnnotationsButton" class="left" onclick="window.showAllAnnotations();">Annotations</button>
-                    <button id="openCollectionButton" class="left" onclick="window.showSavedCollections();">My Collections</button>
-                    <button id="openChatButton" class="left" onclick="playChat();" style="display:none">Chat</button>
+                    <div class="command-left-buttons">
+                    <button class="left icon-btn" onclick="playRead(); playMe();" title="Accounts"><span class="material-icons">person</span></button>
+                    <button id="openLeftButton" class="left btn" onclick="playRead();" style="display:none">Read</button>
+                    <button id="openFindButton" class="left btn" onclick="playFind();">Find</button>
+                    <button id="openChatButton" class="left btn" onclick="playChat();" style="display:none">Chat</button>
                     </div>
                     <button id="snapLeftBtn" class="pane-snap-btn" onclick="snapPanes('left')" title="Collapse/expand panes"><span class="material-icons">arrow_left</span></button>
                 </div>
@@ -110,16 +106,16 @@
             <div id="divider" class="draggable-border"></div>
             <div id="write-pane">
                 <div id="right-main-command" class="command">
-                    <div>
+                    <div class="command-left-buttons">
                         <button id="snapRightBtn" class="pane-snap-btn" onclick="snapPanes('right')" title="Collapse/expand panes"><span class="material-icons">arrow_right</span></button>
                     </div>
-                    <div>
+                    <div class="command-left-buttons">
                         <!--button id="load-button" class="right" onclick="loadFile();">Load</button>-->
-                       <button id="load-button" class="right" onclick="playLoad();">Load</button>
-                         <button id="save-button" class="right" onclick="playSave()">Save</button>
-                         <button id="post-button" class="right" onclick="playPost()" style="display:none">Post</button>
-                         <button id="references-button" class="right" onclick="alternateDivs(currentEditor + '-references','write-pane-content')" style="display:none">Refs</button>
-                         <button id="editor-indicator" onclick="playEditorSwitch()" title="Switch editor">Text &#9662;</button>
+                       <button id="load-button" class="right btn" onclick="playLoad();">Load</button>
+                         <button id="save-button" class="right btn" onclick="playSave()">Save</button>
+                         <button id="post-button" class="right btn" onclick="playPost()" style="display:none">Post</button>
+                         <button id="references-button" class="right btn" onclick="playRefs()" style="display:none">Refs</button>
+                         <button id="editor-indicator" class="btn" onclick="playEditorSwitch()" title="Switch editor">Text &#9662;</button>
                     </div>
                 </div>
                     <!-- Place to store Loaded file input while it is processed-->
@@ -148,7 +144,10 @@
                 </div>       
 
 
-                <div id="write-title" contenteditable="true"></div>
+                <div id="write-title-row">
+                    <div id="write-title" contenteditable="true"></div>
+                    <select id="write-format" title="Output format" style="display:none"></select>
+                </div>
 
                 <div id="write-pane-content">
                    
@@ -179,13 +178,13 @@
     <div id="left-pane">
         <div id="left-command" class="pane command">
             <div class="command-left-buttons">
-                <button id="loginButton" onclick="redirectToKVLogin()">Login</button>
-                <button id="registerButton" onclick="redirectToKVRegister()">Register</button>
-                <button id="logoutButton" onclick="KVlogout(flaskSiteUrl);">Logout</button>
-                <button id="accountButton" onclick="playAccounts();">Accounts</button>
-                <button id="meButton" onclick="playMe();" style="display:none">Me</button>
-                <button id="audioButton" style="display:none;" onclick="toggleDiv('audio-section');">Audio</button>
-                <button id="chatButton"  style="display:none;" onclick="toggleDiv('chat-section');">Chat</button>
+                <button id="loginButton" class="btn" onclick="redirectToKVLogin()">Login</button>
+                <button id="registerButton" class="btn" onclick="redirectToKVRegister()">Register</button>
+                <button id="logoutButton" class="btn" onclick="KVlogout(window.CList.config.flaskSiteUrl);">Logout</button>
+                <button id="accountButton" class="btn" onclick="playAccounts();">Accounts</button>
+                <button id="meButton" class="btn" onclick="playMe();" style="display:none">Me</button>
+                <button id="audioButton" class="btn" style="display:none;" onclick="toggleDiv('audio-section');">Audio</button>
+                <button id="chatButton" class="btn" style="display:none;" onclick="toggleDiv('chat-section');">Chat</button>
             </div>
             <button id="left-close-button" onclick="closeLeftPane()">X</button>
         </div>
@@ -234,25 +233,25 @@
                 <label for="discussionNameInput" class="visually-hidden">Discussion Name:</label>
                 <input type="text" id="discussionNameInput" placeholder="Enter discussion name">
                 <label style="font-size:0.85em;margin-left:4px"><input type="checkbox" id="discussionPublicCheckbox"> Public</label>
-                <button id="advertiseDiscussionButton" onClick="advertiseDiscussion()">Create</button>
-                <button id="refreshDiscussionsButton" onClick="refreshDiscussions()">Join</button>
-                <button id="chat-advanced-button" onclick="toggleDiv('chat-advanced')">Advanced</button>
+                <button id="advertiseDiscussionButton" class="btn" onClick="advertiseDiscussion()">Create</button>
+                <button id="refreshDiscussionsButton" class="btn" onClick="refreshDiscussions()">Join</button>
+                <button id="chat-advanced-button" class="btn btn-small" onclick="toggleDiv('chat-advanced')">Advanced</button>
             </div>
             <div id="discussionListDiv">
                 <ul id="discussion-list"></ul>
             </div>
             <div id="end-discussion-div" style="display: none;">
-                <button id="endDiscussionButton" onClick="endDiscussion()">Leave Discussion</button>
-                <button id="startDocButton" onclick="startCollabFromChat()" title="Start a shared document from this discussion">Start document</button>
+                <button id="endDiscussionButton" class="btn" onClick="endDiscussion()">Leave Discussion</button>
+                <button id="startDocButton" class="btn" onclick="startCollabFromChat()" title="Start a shared document from this discussion">Start document</button>
             </div>
             <div id="chat-messages"></div>
             <input type="text" id="messageInput" placeholder="Type your message">
-            <button id="sendButton">Send</button>
+            <button id="sendButton" class="btn">Send</button>
             <div id="chat-advanced" style="display:none;margin-top:10px;">
                 PeerID: <span id="my-peer-id"></span><br>
                 <label for="peerIdInput" class="visually-hidden">Connect to Peer ID:</label>
                 <input type="text" id="peerIdInput" placeholder="Connect to Peer ID:">
-                <button id="connectButton">Connect</button>
+                <button id="connectButton" class="btn">Connect</button>
             </div>
         </div>
 
@@ -349,6 +348,11 @@
   <script src="js/tags.js" defer></script>         <!-- Write-pane tag field -->
   <script src="js/annotate.js" defer></script>   <!-- Annotation store -->
   <script src="js/collections.js" defer></script> <!-- Collections -->
+  <script src="js/collection-editor.js" defer></script>
+  <script src="js/jsonbin.js" defer></script>    <!-- Bin publishers -->
+  <script src="js/gist.js" defer></script>
+  <script src="js/0x0.js" defer></script>
+  <script src="js/clistbin.js" defer></script>
   <script src="js/hypothesis.js" defer></script>  <!-- Hypothes.is annotation account -->
 
   <script src="js/chatgpt.js" defer></script>          <!-- AI -->
@@ -403,8 +407,8 @@
       </div>
       <div id="authError" style="color:red; margin-bottom:.5em; display:none;"></div>
       <div style="display:flex; gap:.5em; justify-content:flex-end;">
-        <button onclick="closeAuthModal()">Cancel</button>
-        <button id="authSubmitBtn" onclick="submitAuthModal()"></button>
+        <button class="btn btn-secondary" onclick="closeAuthModal()">Cancel</button>
+        <button id="authSubmitBtn" class="btn" onclick="submitAuthModal()"></button>
       </div>
     </div>
 
@@ -417,8 +421,8 @@
         </select>
       </label>
       <div style="display:flex; gap:.5em; justify-content:flex-end;">
-        <button onclick="closeChangeServerPanel()">Cancel</button>
-        <button onclick="selectAccountServer()">Select</button>
+        <button class="btn btn-secondary" onclick="closeChangeServerPanel()">Cancel</button>
+        <button class="btn" onclick="selectAccountServer()">Select</button>
       </div>
     </div>
 

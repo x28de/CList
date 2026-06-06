@@ -55,7 +55,7 @@ let _bskyPds   = null;
                 <button class="clist-action-btn${isLiked ? ' action-active' : ''}" title="Like" data-record-uri="${_he(likeUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','favorite',this)"><span class="material-icons md-18 md-light">favorite</span></button>
                 <button class="clist-action-btn${isReposted ? ' action-active' : ''}" title="Repost" data-record-uri="${_he(repostUri)}" onclick="handleBlueskyAction('${_heJs(postUri)}','${_heJs(postCid)}','${_heJs(postId)}','repost',this)"><span class="material-icons md-18 md-light">autorenew</span></button>
                 ${inThread ? `<button class="clist-action-btn" title="View thread" onclick="displayThread('${_heJs(threadUri)}')"><span class="material-icons md-18 md-light">dynamic_feed</span></button>` : ''}
-                <button class="clist-action-btn" title="Open in browser" onclick="window.open('${_heJs(postUrl)}','_blank','width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>
+                <button class="clist-action-btn" title="Open in browser" onclick="openInBrowser('${_heJs(postUrl)}', '${_heJs(_itemID)}')"><span class="material-icons md-18 md-light">launch</span></button>
             `;
         },
     };
@@ -774,7 +774,7 @@ async function displayBlueskyNotifications(notifications, cursor, isFirstPage) {
             const actionButtons = document.createElement('div');
             actionButtons.classList.add('status-actions');
             actionButtons.innerHTML = `
-                <button class="clist-action-btn" title="Open in browser" onclick="window.open('${postUrl}','_blank','width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>
+                <button class="clist-action-btn" title="Open in browser" onclick="openInBrowser('${postUrl}', '${postId}')"><span class="material-icons md-18 md-light">launch</span></button>
                 <button class="clist-action-btn" id="collect-btn-${postId}" onclick="collectItem('${postId}');" title="Add to collection"><span class="material-icons md-18 md-light">library_add</span></button>
                 <button class="clist-action-btn" onclick="shareToChat('${postId}');" title="Share to chat"><span class="material-icons md-18 md-light">chat_bubble_outline</span></button>
             `;

@@ -745,7 +745,7 @@ function appendShareCard(data, sender) {
         btn.innerHTML = '<span class="material-icons md-18 md-light">launch</span>';
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          window.open(item.url, '_blank', 'width=800,height=600,scrollbars=yes');
+          openInBrowser(item.url);
         });
         li.appendChild(btn);
       }

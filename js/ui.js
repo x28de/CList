@@ -13,6 +13,83 @@
 window.CList = window.CList || {};
 window.CList.ui = {};
 
+// ── External-window registry for drag-and-drop reference attribution ─────────
+window.CList._openedWindowRefs    = {};
+window.CList._lastOpenedWindowRef = null;
+
+function _makeMinimalRef(url, title) {
+    let host = '';
+    try { host = new URL(url).hostname; } catch (_) {}
+    return { url, title: title || url, author_name: '', feed: host,
+             created_at: new Date().toISOString(), id: url };
+}
+
+window.openInBrowser = function(url, itemId) {
+    window.open(url, '_blank', 'width=800,height=600,scrollbars=yes');
+    let ref = itemId ? document.getElementById(itemId)?.reference : null;
+    if (!ref) ref = _makeMinimalRef(url);
+    window.CList._openedWindowRefs[url] = ref;
+    window.CList._lastOpenedWindowRef   = ref;
+};
+
+window._extractDropUrl = function(uriList, html) {
+    if (uriList) {
+        const first = uriList.split('\n').map(l => l.trim()).find(l => l && !l.startsWith('#'));
+        if (first) return first;
+    }
+    if (html) {
+        const m = html.match(/href=["']([^"'#][^"']*?)["']/i);
+        if (m) return m[1];
+    }
+    return null;
+};
+
+// url  — extracted from text/uri-list or text/html href; null for plain-text drags
+// title — from text/x-clist-title injected by the CList extension; null if not present
+window._attributeDroppedContent = function(url, title) {
+    let ref = url ? window.CList._openedWindowRefs[url] : null;
+    if (!ref && url) ref = _makeMinimalRef(url, title);
+    if (!ref) ref = window.CList._lastOpenedWindowRef;
+    if (!ref) return;
+    if (typeof pushReference === 'function' && pushReference(ref)) {
+        showStatusMessage('Reference added: ' + (ref.title !== ref.url ? ref.title : ref.feed || ref.url));
+    }
+};
+
+// Receive page-identity messages posted by the CList browser extension's content
+// script running in popup windows (window.opener.postMessage). When the extension
+// is installed, this fires as soon as the popup loads — so the reference is ready
+// before the user even starts dragging.
+// Global capture drop handler — fires before the browser's native textarea insertion,
+// so it works even when Firefox swallows the event in the target phase.
+// Scoped to the write pane so drags within the read pane are not mis-attributed.
+document.addEventListener('drop', function(e) {
+    const writePaneContent = document.getElementById('write-pane-content');
+    if (!writePaneContent || !writePaneContent.contains(e.target)) return;
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const url   = window._extractDropUrl(dt.getData('text/uri-list'), dt.getData('text/html'));
+    const title = dt.getData('text/x-clist-title') || null;
+    window._attributeDroppedContent(url, title);
+}, true);
+
+window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'clist-drag-source') return;
+    const url   = e.data.url;
+    const title = e.data.title || '';
+
+    if (!url || !/^https?:\/\//.test(url)) return;
+    // Enrich any existing ref with the actual page title; create a minimal ref otherwise.
+    let ref = window.CList._openedWindowRefs[url];
+    if (ref) {
+        if (title && ref.title === ref.url) ref.title = title;  // fill in placeholder title
+    } else {
+        ref = _makeMinimalRef(url, title);
+    }
+    window.CList._openedWindowRefs[url] = ref;
+    window.CList._lastOpenedWindowRef   = ref;
+});
+
 // ── accountList ──────────────────────────────────────────────────────────────
 // Returns a div of account-select buttons filtered and styled per type.
 // tip       — instruction string shown above the buttons

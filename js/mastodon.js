@@ -66,7 +66,7 @@ let accessToken = null;
                         <button class="clist-action-btn${isFavourited ? ' action-active' : ''}" title="Favourite" onclick="handleMastodonAction('${_heJs(statusId)}', 'favorite', this)"><span class="material-icons md-18 md-light">favorite</span></button>
                         <button class="clist-action-btn${isBookmarked ? ' action-active' : ''}" title="Bookmark" onclick="handleMastodonAction('${_heJs(statusId)}', 'bookmark', this)"><span class="material-icons md-18 md-light">bookmarks</span></button>
                         ${threadsBtn}
-                        <button class="clist-action-btn" title="Open in browser" onclick="window.open('${_heJs(_itemUrl)}','_blank','width=800,height=600,scrollbars=yes')"><span class="material-icons md-18 md-light">launch</span></button>
+                        <button class="clist-action-btn" title="Open in browser" onclick="openInBrowser('${_heJs(_itemUrl)}', '${_heJs(_itemID)}')"><span class="material-icons md-18 md-light">launch</span></button>
                     `;
                 },
                 feedFunctions: {

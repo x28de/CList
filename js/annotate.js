@@ -1097,7 +1097,7 @@ function _buildAnnotationItem(anno, options = {}) {
         launchBtn.className = 'clist-action-btn';
         launchBtn.title = 'Open source page';
         launchBtn.innerHTML = '<span class="material-icons md-18 md-light">launch</span>';
-        launchBtn.addEventListener('click', () => window.open(sourceUrl, '_blank', 'width=800,height=600,scrollbars=yes'));
+        launchBtn.addEventListener('click', () => openInBrowser(sourceUrl));
         statusActions.appendChild(launchBtn);
     }
 

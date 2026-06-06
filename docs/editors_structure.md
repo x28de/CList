@@ -136,6 +136,53 @@ Account-backed savers (e.g. Google Drive, Dropbox) register here too; their `sav
 
 ---
 
+## Drag-and-drop reference attribution
+
+When the user opens an external page via `openInBrowser()` (any "Open in browser" button), CList stores a reference object for that URL in `window.CList._openedWindowRefs`. If the user then drags content from the popup into an editor, a `drop` event handler calls `window._attributeDroppedContent(url)`, which looks up the stored reference and calls `pushReference()` to add it to the references panel.
+
+**Every editor must wire a `drop` listener** so that attribution works. The listener must be added in capture phase (`true` as the third argument) so it fires before the editor's own drag handling (which may call `stopImmediatePropagation`).
+
+### Iframe-based editors (e.g. TinyMCE)
+
+Add the listener to **`editor.getDoc()`** (the iframe's document), not the body, in `init_instance_callback`. The doc-level capture listener fires before any body-level handler TinyMCE may have registered:
+
+```javascript
+init_instance_callback: function (editor) {
+    editor.getDoc().addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        const url = window._extractDropUrl(dt.getData('text/uri-list'), dt.getData('text/html'));
+        window._attributeDroppedContent(url);
+    }, true);
+},
+```
+
+### DOM-based editors (e.g. TipTap / ProseMirror, plain textarea)
+
+Add the listener to the **editor's container element** in capture phase. For a `<textarea>`, listen on the textarea itself; for TipTap, listen on the `#collab-editor-container` wrapper. Guard against re-wiring with a data attribute:
+
+```javascript
+if (!editorDiv.dataset.draftWired) {
+    const editorEl = document.getElementById('my-editor-container');
+    editorEl.addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        const url = window._extractDropUrl(dt.getData('text/uri-list'), dt.getData('text/html'));
+        window._attributeDroppedContent(url);
+    }, true);
+    editorDiv.dataset.draftWired = '1';
+}
+```
+
+### How attribution resolves the source
+
+`_attributeDroppedContent(url)` (defined in `ui.js`) uses this priority:
+1. **URL match** — if `text/uri-list` or an `href` in `text/html` is extracted from the drop, the stored ref for that URL is used.
+2. **Last-opened window** — if the drop contains only plain text (no URL in the drag data), `window.CList._lastOpenedWindowRef` is used. This is set each time `openInBrowser()` is called, so a plain-text drag from the most recently opened popup is correctly attributed.
+3. **Nothing** — if neither is available, no reference is added.
+
+---
+
 ## Draft auto-save — local editors only
 
 Local editors (those where `requiresAccount: false` and content is held in the browser) should auto-save their content to `sessionStorage` so a page reload doesn't lose work. Service-backed editors (e.g. Etherpad) manage their own persistence server-side and do not need this.

@@ -201,8 +201,19 @@ tinymceConfig = {
 
         const debouncedSave = debounce(() => saveDraft('tinymce', editor.getContent()), 1000);
         editor.on('input change', debouncedSave);
+
     },
     init_instance_callback: function (editor) {
+        // Listen on the iframe document in capture phase — fires before any body-level
+        // handler, including TinyMCE's own drag plugin which may stopImmediatePropagation on body.
+        editor.getDoc().addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            if (!dt) return;
+            const url   = window._extractDropUrl(dt.getData('text/uri-list'), dt.getData('text/html'));
+            const title = dt.getData('text/x-clist-title') || null;
+            window._attributeDroppedContent(url, title);
+        }, true);
+
         if (pendingTinymceDraftOffer) {
             pendingTinymceDraftOffer = false;
             offerDraftRestore('tinymce', 'text/html');

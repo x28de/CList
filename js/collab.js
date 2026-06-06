@@ -780,6 +780,14 @@ window.CList.schemas['Collab'] = {
                     if (currentDocId) shareCollabDoc()
                 })
 
+                document.getElementById('collab-editor-container').addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    if (!dt) return;
+                    const url   = window._extractDropUrl(dt.getData('text/uri-list'), dt.getData('text/html'));
+                    const title = dt.getData('text/x-clist-title') || null;
+                    window._attributeDroppedContent(url, title);
+                }, true);
+
                 document.getElementById('collab-annotate-btn').addEventListener('click', () => {
                     if (!currentDocId) {
                         showStatusMessage('Open a document first before annotating.')

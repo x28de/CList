@@ -63,7 +63,7 @@ window.CList.schemas['RSS'] = {
             if (item.link && /^https?:\/\//i.test(item.link)) {
                 const safeLink = item.link.replace(/'/g, '%27');
                 a += `<button class="clist-action-btn" title="Open in browser" `
-                   + `onclick="window.open('${safeLink}','_blank','width=800,height=600,scrollbars=yes')">`
+                   + `onclick="openInBrowser('${safeLink}', '${itemID}')">`
                    + `<span class="material-icons md-18 md-light">launch</span></button>`;
             }
             const ri = item.readAt ? 'drafts' : 'mail';

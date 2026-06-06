@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CList Annotate & Collect",
-  "version": "0.3.0",
+  "version": "0.3.6",
   "description": "Annotate and collect web pages into your CList account from any tab.",
 
   "action": {
@@ -19,6 +19,12 @@
     "service_worker": "background.js",
     "scripts": ["background.js"]
   },
+
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }],
 
   "permissions": ["activeTab", "storage", "tabs", "sidePanel"],
 

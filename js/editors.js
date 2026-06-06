@@ -90,6 +90,13 @@ const editorHandlers = {
             if (!textEditorDiv.dataset.draftWired) {
                 const ta = window.CList.ui.view.textColumn;
                 ta.addEventListener('input', debounce(() => saveDraft('texteditor', ta.value), 1000));
+                ta.addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    if (!dt) return;
+                    const url   = window._extractDropUrl(dt.getData('text/uri-list'), dt.getData('text/html'));
+                    const title = dt.getData('text/x-clist-title') || null;
+                    window._attributeDroppedContent(url, title);
+                });
                 textEditorDiv.dataset.draftWired = '1';
             }
 

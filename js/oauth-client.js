@@ -34,7 +34,7 @@ const OAuthClient = {
 
         const clientData = provider.dynamicRegistration
             ? await this._getOrRegisterClient(instanceUrl, provider, redirectUri)
-            : { clientId: provider.clientId, clientSecret: null, redirectUri };
+            : { clientId: options.clientId || provider.clientId, clientSecret: null, redirectUri };
 
         const { codeVerifier, codeChallenge } = await this._generatePKCE();
         const state = this._randomState();
@@ -61,14 +61,19 @@ const OAuthClient = {
             code_challenge_method: 'S256',
         });
         if (options.forceLogin) authParams.set('force_login', 'true');
+        if (provider.extraAuthParams) {
+            Object.entries(provider.extraAuthParams).forEach(([k, v]) => authParams.set(k, v));
+        }
 
-        window.location.href = instanceUrl + provider.authorizationPath + '?' + authParams.toString();
+        const authUrl = provider.authorizationUrl || (instanceUrl + provider.authorizationPath);
+        window.location.href = authUrl + '?' + authParams.toString();
     },
 
     // Process an OAuth callback URL.
     // Reads code + state from the current URL, validates state against sessionStorage,
     // exchanges the code for a token, and returns:
-    //   { accountKey, providerType, instanceUrl, accessToken, extra }
+    //   { accountKey, providerType, instanceUrl, accessToken, tokenData, extra }
+    // tokenData contains the full token response (including refresh_token when offline access was requested).
     // Returns null if the URL has no OAuth parameters (not a callback).
     async handleCallback() {
         const params = new URLSearchParams(window.location.search);
@@ -87,9 +92,10 @@ const OAuthClient = {
         const provider = OAuthProviders[flow.providerType];
         if (!provider) throw new Error(`Unknown provider in saved flow state: ${flow.providerType}`);
 
-        const accessToken = await OAuthStrategies.exchangeCode(code, {
+        const tokenData = await OAuthStrategies.exchangeCode(code, {
             instanceUrl:  flow.instanceUrl,
             tokenPath:    provider.tokenPath,
+            tokenUrl:     provider.tokenUrl || null,
             clientId:     flow.clientId,
             clientSecret: flow.clientSecret,
             redirectUri:  flow.redirectUri,
@@ -97,11 +103,15 @@ const OAuthClient = {
             mode:         flow.mode,
         });
 
+        // tokenData may be the full response object (preferred) or a bare string (legacy).
+        const accessToken = (typeof tokenData === 'object') ? tokenData.access_token : tokenData;
+
         return {
             accountKey:   flow.accountKey,
             providerType: flow.providerType,
             instanceUrl:  flow.instanceUrl,
             accessToken,
+            tokenData:    (typeof tokenData === 'object') ? tokenData : null,
             extra:        flow.extra || {},
         };
     },

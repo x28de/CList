@@ -84,14 +84,25 @@
                     btn.textContent = 'Re-authorize';
                     btn.style.marginTop = '4px';
                     btn.onclick = () => {
-                        const keyEl   = document.getElementById('_keyInput');
-                        const titleEl = document.getElementById('titleInput');
-                        const permEl  = document.getElementById('permissionsInput');
-                        window.top.mastodonOAuthStart(
-                            titleEl ? titleEl.value : (keyEl ? keyEl.value : ''),
-                            keyEl   ? keyEl.value   : '',
-                            permEl  ? permEl.value  : 'rw'
-                        );
+                        const keyEl    = document.getElementById('_keyInput');
+                        const titleEl  = document.getElementById('titleInput');
+                        const permEl   = document.getElementById('permissionsInput');
+                        const appKeyEl = document.getElementById('appKeyInput');
+                        const folderEl = document.getElementById('folderInput');
+                        if (currentSchema && currentSchema.type === 'Dropbox') {
+                            window.top.dropboxOAuthStart(
+                                appKeyEl ? appKeyEl.value : '',
+                                keyEl    ? keyEl.value    : '',
+                                permEl   ? permEl.value   : 'b',
+                                folderEl ? folderEl.value : '/CList'
+                            );
+                        } else {
+                            window.top.mastodonOAuthStart(
+                                titleEl ? titleEl.value : (keyEl ? keyEl.value : ''),
+                                keyEl   ? keyEl.value   : '',
+                                permEl  ? permEl.value  : 'rw'
+                            );
+                        }
                     };
                     wrapper.appendChild(btn);
 
@@ -324,6 +335,7 @@
                 Gist:      'code',
                 '0x0':     'upload',
                 CListBin:  'storage',
+                Dropbox:   'cloud_download',
             };
             if (type === 'Mastodon') {
                 const span = document.createElement('span');
@@ -365,7 +377,7 @@
 
             const list = document.createElement('div');
             list.className = 'account-list';
-            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp', 'Annotate', 'Hypothesis', 'JSONBin', 'Gist', '0x0', 'CListBin'].forEach(type => {
+            ['Mastodon', 'Bluesky', 'WordPress', 'OPML', 'RSS', 'Blogger', 'Etherpad', 'Collab', 'AI', 'Proxyp', 'Annotate', 'Hypothesis', 'JSONBin', 'Gist', '0x0', 'CListBin', 'Dropbox'].forEach(type => {
                 const btn = document.createElement('button');
                 btn.className = 'account-button';
                 btn.onclick = () => selectAccountType(type);
@@ -419,6 +431,45 @@
                             <button class="kv-action-btn kv-save-btn" onclick="submitMastodonManual()">Save Account</button>
                         </div>
                     </details>`;
+                return;
+            }
+
+            if (type === 'Dropbox') {
+                const flow = document.getElementById('add-flow');
+                const inputStyle = 'display:block;width:100%;box-sizing:border-box;padding:0.2rem;font-size:0.8rem;margin:2px 0 8px;';
+                const labelStyle = 'font-variant:small-caps;font-size:0.8rem;color:#555;display:block;margin-top:6px;';
+                flow.innerHTML = `
+                    <h3 style="margin:0 0 4px;">Add Dropbox Account</h3>
+                    <p style="font-size:0.82em;color:#666;margin:0 0 8px;">
+                        <a href="https://github.com/Downes/CList/wiki/B8-%E2%80%90-Add-Dropbox-to-CList" target="_blank" rel="noopener">Full setup instructions</a>
+                    </p>
+                    <p style="font-size:0.82em;color:#666;margin:0 0 10px;">
+                        Create a free app at
+                        <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener">dropbox.com/developers/apps</a>:
+                        <br>1. Choose <em>Scoped Access → App folder</em> (or Full Dropbox).
+                        <br>2. Click the <strong>Permissions</strong> tab and enable
+                        <code>files.content.write</code> and <code>files.content.read</code>,
+                        then click <em>Submit</em>.
+                        <br>3. Under <em>Settings → OAuth 2 → Redirect URIs</em>, add:
+                        <code style="word-break:break-all;">${window.location.origin}/callback.html</code>
+                        <br>4. Copy the <strong>App Key</strong> below and click Authorize.
+                    </p>
+                    <label style="${labelStyle}">Label</label>
+                    <input type="text" id="dropbox-title" placeholder="My Dropbox" value="My Dropbox" style="${inputStyle}">
+                    <label style="${labelStyle}">App Key</label>
+                    <input type="text" id="dropbox-app-key" placeholder="xxxxxxxxxxxxxxx" style="${inputStyle}">
+                    <label style="${labelStyle}">Save Folder</label>
+                    <input type="text" id="dropbox-folder" placeholder="/CList" value="/CList" style="${inputStyle}">
+                    <div class="kv-action-buttons">
+                        <button class="kv-action-btn kv-save-btn"
+                            onclick="window.top.dropboxOAuthStart(
+                                document.getElementById('dropbox-app-key').value,
+                                document.getElementById('dropbox-title').value,
+                                'b',
+                                document.getElementById('dropbox-folder').value
+                            )">Authorize with Dropbox</button>
+                        <button class="kv-action-btn kv-cancel-btn" onclick="showTypePicker()">Back</button>
+                    </div>`;
                 return;
             }
 

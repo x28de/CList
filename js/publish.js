@@ -166,8 +166,8 @@ function populateSaveOptions() {
         btn.appendChild(nameEl);
 
         btn.addEventListener('click', async () => {
-            await handler.save();
-            closeRightPane();
+            const result = await handler.save();
+            if (!result?.keepOpen) closeRightPane();
         });
 
         list.appendChild(btn);

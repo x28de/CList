@@ -1965,3 +1965,18 @@ function _renderEntryFields(item, container, onTitleChange) {
         container.appendChild(wrapper);
     });
 }
+
+// Public bridge: parse text as OPML or RSS and open in the collection editor.
+// Called by external modules (e.g. dropbox.js) that cannot access module-private variables.
+// Returns true if the format was recognised, false otherwise.
+window.loadCollectionText = async function (text, filename) {
+    const format = _detectFormat('', filename || '');
+    let parsed;
+    if      (format === 'rss')  parsed = _parseCollectionRSS(text);
+    else if (format === 'opml') parsed = _parseCollectionOPML(text);
+    else return false;
+    _activeCollection = { col: { name: parsed.title, items: parsed.items }, token: null, encKey: null };
+    if (typeof initializeEditor === 'function') await initializeEditor('collection');
+    if (typeof closeRightPane   === 'function') closeRightPane();
+    return true;
+};

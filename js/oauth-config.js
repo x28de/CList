@@ -15,6 +15,18 @@
 
 window.OAuthProviders = window.OAuthProviders || {};
 
+window.OAuthProviders['Dropbox'] = {
+    name:                'Dropbox',
+    dynamicRegistration: false,
+    clientId:            null,          // provided per-account via options.clientId (the user's App Key)
+    authorizationUrl:    'https://www.dropbox.com/oauth2/authorize',
+    authorizationPath:   '',            // unused; authorizationUrl takes precedence
+    tokenUrl:            'https://api.dropboxapi.com/oauth2/token',
+    tokenPath:           '',            // unused; tokenUrl takes precedence
+    scopes:              'files.content.write files.content.read',
+    extraAuthParams:     { token_access_type: 'offline' },
+};
+
 window.OAuthProviders['Mastodon'] = {
     name:                 'Mastodon',
     dynamicRegistration:  true,

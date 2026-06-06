@@ -18,14 +18,15 @@ const OAuthStrategies = {
         return 'hosted-web';
     },
 
-    async exchangeCode(code, { instanceUrl, tokenPath, clientId, clientSecret, redirectUri, codeVerifier, mode }) {
+    async exchangeCode(code, { instanceUrl, tokenPath, tokenUrl, clientId, clientSecret, redirectUri, codeVerifier, mode }) {
         if (mode === 'desktop-local') {
-            return this._exchangeViaBroker(code, { instanceUrl, tokenPath, clientId, clientSecret, redirectUri, codeVerifier });
+            return this._exchangeViaBroker(code, { instanceUrl, tokenPath, tokenUrl, clientId, clientSecret, redirectUri, codeVerifier });
         }
-        return this._exchangeDirect(code, { instanceUrl, tokenPath, clientId, clientSecret, redirectUri, codeVerifier });
+        return this._exchangeDirect(code, { instanceUrl, tokenPath, tokenUrl, clientId, clientSecret, redirectUri, codeVerifier });
     },
 
-    async _exchangeDirect(code, { instanceUrl, tokenPath, clientId, clientSecret, redirectUri, codeVerifier }) {
+    // Returns the full token response object (callers read .access_token; .refresh_token available when granted).
+    async _exchangeDirect(code, { instanceUrl, tokenPath, tokenUrl, clientId, clientSecret, redirectUri, codeVerifier }) {
         const params = {
             grant_type:   'authorization_code',
             code,
@@ -35,7 +36,8 @@ const OAuthStrategies = {
         if (clientSecret)  params.client_secret  = clientSecret;
         if (codeVerifier)  params.code_verifier  = codeVerifier;
 
-        const response = await fetch(`${instanceUrl}${tokenPath}`, {
+        const url = tokenUrl || `${instanceUrl}${tokenPath}`;
+        const response = await fetch(url, {
             method:  'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body:    new URLSearchParams(params),
@@ -46,17 +48,17 @@ const OAuthStrategies = {
         }
         const data = await response.json();
         if (!data.access_token) throw new Error('No access_token in token response');
-        return data.access_token;
+        return data;
     },
 
     // The desktop launcher exposes POST /oauth/token which proxies the exchange,
     // avoiding CORS restrictions on Mastodon instances.
-    async _exchangeViaBroker(code, { instanceUrl, tokenPath, clientId, clientSecret, redirectUri, codeVerifier }) {
+    async _exchangeViaBroker(code, { instanceUrl, tokenPath, tokenUrl, clientId, clientSecret, redirectUri, codeVerifier }) {
         const brokerUrl = window.location.origin + '/oauth/token';
         const response = await fetch(brokerUrl, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ code, instanceUrl, tokenPath, clientId, clientSecret, redirectUri, codeVerifier }),
+            body:    JSON.stringify({ code, instanceUrl, tokenPath, tokenUrl, clientId, clientSecret, redirectUri, codeVerifier }),
         });
         if (!response.ok) {
             const errText = await response.text().catch(() => '');
@@ -64,6 +66,6 @@ const OAuthStrategies = {
         }
         const data = await response.json();
         if (!data.access_token) throw new Error('No access_token from broker');
-        return data.access_token;
+        return data;
     },
 };
